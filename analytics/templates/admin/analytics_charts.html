@@ -1,0 +1,130 @@
+{% extends "admin/base_site.html" %}
+l
+{% block content %}
+<h1>Project Analytics Charts</h1>
+
+<label for="chartType">Select the chart type:</label>
+<select id="chartType">
+    <option value="bar">Bar chart</option>
+    <option value="line">Line chart</option>
+    <option value="pie">Pie chart</option>
+</select>
+
+<div style="width: 100%; max-width: 1200px; margin: auto; height: 450px;">
+    <canvas id="analyticsChart"></canvas>
+</div>
+
+<script id="analytics-data" type="application/json">{{ data|safe }}</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        try {
+            const rawData = document.getElementById("analytics-data").textContent;
+            const data = JSON.parse(rawData);
+
+            if (!data.labels || data.labels.length === 0) {
+                console.error("Empty dataset.");
+                return;
+            }
+
+            const ctx = document.getElementById("analyticsChart").getContext("2d");
+            let analyticsChart = null;
+
+            function generateColors(length) {
+                const colors = ["#FF5733", "#33FF57", "#3357FF", "#F1C40F", "#8E44AD", "#1ABC9C", "#E74C3C", "#2ECC71", "#3498DB", "#9B59B6"];
+                return Array.from({ length }, (_, i) => colors[i % colors.length]);
+            }
+
+            function createChart(type) {
+                if (analyticsChart) {
+                    analyticsChart.destroy();
+                }
+
+                if (type === "pie") {
+                    analyticsChart = new Chart(ctx, {
+                        type: "pie",
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                label: "Total Tasks",
+                                backgroundColor: generateColors(data.total_tasks.length),
+                                borderWidth: 1,
+                                data: data.total_tasks,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        usePointStyle: true,
+                                        boxWidth: 15
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    analyticsChart = new Chart(ctx, {
+                        type: type,
+                        data: {
+                            labels: data.labels,
+                            datasets: [
+                                {
+                                    label: "Total Tasks",
+                                    backgroundColor: "blue",
+                                    borderColor: "blue",
+                                    data: data.total_tasks,
+                                    fill: false
+                                },
+                                {
+                                    label: "Completed Tasks",
+                                    backgroundColor: "green",
+                                    borderColor: "green",
+                                    data: data.completed_tasks,
+                                    fill: false
+                                },
+                                {
+                                    label: "In Progress Tasks",
+                                    backgroundColor: "yellow",
+                                    borderColor: "yellow",
+                                    data: data.in_progress_tasks,
+                                    fill: false
+                                },
+                                {
+                                    label: "Pending Tasks",
+                                    backgroundColor: "red",
+                                    borderColor: "red",
+                                    data: data.pending_tasks,
+                                    fill: false
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            createChart("bar");
+
+            document.getElementById("chartType").addEventListener("change", function(event) {
+                createChart(event.target.value);
+            });
+
+        } catch (error) {
+            console.error("Error rendering chart:", error);
+        }
+    });
+</script>
+{% endblock %}

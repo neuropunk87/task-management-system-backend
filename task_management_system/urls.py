@@ -20,9 +20,15 @@ from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
+
+
+def home_view(request):
+    return JsonResponse({"message": "API is running"}, status=200)
 
 
 urlpatterns = [
+    path('', home_view),
     path('secretadmin/', admin.site.urls),
 
     path('api/users/', include('users.urls')),

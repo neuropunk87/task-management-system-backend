@@ -1,0 +1,1581 @@
+openapi: 3.0.3
+info:
+  title: Task Management API
+  version: 1.0.0
+  description: API documentation for the Task Management system
+paths:
+  /api/analytics/{project_id}/:
+    get:
+      operationId: api_analytics_retrieve
+      parameters:
+      - in: path
+        name: project_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectAnalytics'
+          description: ''
+  /api/notifications/:
+    get:
+      operationId: api_notifications_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+    post:
+      operationId: api_notifications_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/notifications/{notification_id}/read/:
+    post:
+      operationId: api_notifications_read_create
+      parameters:
+      - in: path
+        name: notification_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Notification'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+          description: ''
+  /api/projects/:
+    get:
+      operationId: api_projects_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProjectList'
+          description: ''
+    post:
+      operationId: api_projects_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreateUpdate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectCreateUpdate'
+          description: ''
+  /api/projects/{id}/:
+    get:
+      operationId: api_projects_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    put:
+      operationId: api_projects_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectCreateUpdate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectCreateUpdate'
+          description: ''
+    patch:
+      operationId: api_projects_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProjectCreateUpdate'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectCreateUpdate'
+          description: ''
+    delete:
+      operationId: api_projects_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this project.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/tasks/comments/:
+    get:
+      operationId: api_tasks_comments_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCommentList'
+          description: ''
+    post:
+      operationId: api_tasks_comments_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Comment'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+  /api/tasks/comments/{id}/:
+    get:
+      operationId: api_tasks_comments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this comment.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+    put:
+      operationId: api_tasks_comments_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this comment.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Comment'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+    patch:
+      operationId: api_tasks_comments_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this comment.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedComment'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+    delete:
+      operationId: api_tasks_comments_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this comment.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/tasks/comments/{id}/reply/:
+    post:
+      operationId: api_tasks_comments_reply_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this comment.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Comment'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+  /api/tasks/comments/my-comments/:
+    get:
+      operationId: api_tasks_comments_my_comments_retrieve
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+          description: ''
+  /api/tasks/tasks/:
+    get:
+      operationId: api_tasks_tasks_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTaskList'
+          description: ''
+    post:
+      operationId: api_tasks_tasks_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/tasks/tasks/{id}/:
+    get:
+      operationId: api_tasks_tasks_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Task.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    put:
+      operationId: api_tasks_tasks_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Task.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    patch:
+      operationId: api_tasks_tasks_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Task.
+        required: true
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTask'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    delete:
+      operationId: api_tasks_tasks_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Task.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/tasks/tasks/{id}/comments/:
+    get:
+      operationId: api_tasks_tasks_comments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Task.
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/tasks/tasks/my-tasks/:
+    get:
+      operationId: api_tasks_tasks_my_tasks_retrieve
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/tasks/tasks/project-tasks/:
+    get:
+      operationId: api_tasks_tasks_project_tasks_retrieve
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/users/list/:
+    get:
+      operationId: api_users_list_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+  /api/users/login/:
+    post:
+      operationId: api_users_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CustomTokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomTokenObtainPair'
+          description: ''
+  /api/users/logout:
+    post:
+      operationId: api_users_logout_create
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/users/profile/:
+    get:
+      operationId: api_users_profile_retrieve
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+          description: ''
+    put:
+      operationId: api_users_profile_update
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserDetail'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+          description: ''
+    patch:
+      operationId: api_users_profile_partial_update
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserDetail'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+          description: ''
+  /api/users/profile/avatar/:
+    put:
+      operationId: api_users_profile_avatar_update
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Avatar'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Avatar'
+          description: ''
+  /api/users/profile/change-password/:
+    post:
+      operationId: api_users_profile_change_password_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePassword'
+          description: ''
+  /api/users/register/:
+    post:
+      operationId: api_users_register_create
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserRegistration'
+          description: ''
+  /api/users/token/refresh/:
+    post:
+      operationId: api_users_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/users/user/{id}/:
+    get:
+      operationId: api_users_user_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - api
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+          description: ''
+components:
+  schemas:
+    Avatar:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        avatar:
+          type: string
+          format: uri
+      required:
+      - avatar
+      - id
+    ChangePassword:
+      type: object
+      properties:
+        old_password:
+          type: string
+          writeOnly: true
+        new_password:
+          type: string
+          writeOnly: true
+      required:
+      - new_password
+      - old_password
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        task:
+          type: integer
+          readOnly: true
+        task_id:
+          type: integer
+          writeOnly: true
+        author:
+          type: integer
+          readOnly: true
+          nullable: true
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - author
+      - content
+      - created_at
+      - id
+      - modified_at
+      - task
+      - task_id
+    CustomTokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - password
+      - username
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+        task:
+          type: integer
+          readOnly: true
+          nullable: true
+        message:
+          type: string
+          readOnly: true
+        is_read:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - is_read
+      - message
+      - task
+      - user
+    PaginatedCommentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+    PaginatedNotificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+    PaginatedProjectList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+    PaginatedTaskList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+    PaginatedUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    Participant:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+      required:
+      - email
+      - id
+      - username
+    PatchedComment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        task:
+          type: integer
+          readOnly: true
+        task_id:
+          type: integer
+          writeOnly: true
+        author:
+          type: integer
+          readOnly: true
+          nullable: true
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedProjectCreateUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Project name
+          maxLength: 255
+        description:
+          type: string
+          description: Detailed description of the project
+        owner:
+          type: integer
+          nullable: true
+          description: The user who owns the project
+        participants:
+          type: array
+          items:
+            type: integer
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ProjectStatusEnum'
+          description: |-
+            Project status
+
+            * `active` - Active
+            * `archived` - Archived
+    PatchedTask:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        assigned_to:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+          readOnly: true
+        assigned_to_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        status:
+          $ref: '#/components/schemas/TaskStatusEnum'
+        deadline:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        project:
+          type: integer
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+    PatchedUserDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+          description: |-
+            User role in the system
+
+            * `superadmin` - Super Administrator
+            * `admin` - Administrator
+            * `manager` - Manager
+            * `employee` - Employee
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 30
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 30
+        telegram_id:
+          type: string
+          nullable: true
+          description: Telegram ID for notifications
+          maxLength: 50
+        telegram_notifications_enabled:
+          type: boolean
+          description: Enable Telegram notifications
+        phone_number:
+          type: string
+          nullable: true
+          description: User phone number (optional)
+          maxLength: 15
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+          description: User date of birth (optional)
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          description: Profile picture (optional)
+    PriorityEnum:
+      enum:
+      - Low
+      - Medium
+      - High
+      type: string
+      description: |-
+        * `Low` - Low
+        * `Medium` - Medium
+        * `High` - High
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Project name
+          maxLength: 255
+        description:
+          type: string
+          description: Detailed description of the project
+        owner:
+          allOf:
+          - $ref: '#/components/schemas/Participant'
+          readOnly: true
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ProjectStatusEnum'
+          description: |-
+            Project status
+
+            * `active` - Active
+            * `archived` - Archived
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: The date and time when the project was created
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          description: The date and time when the project was last updated
+      required:
+      - created_at
+      - id
+      - name
+      - owner
+      - participants
+      - updated_at
+    ProjectAnalytics:
+      type: object
+      properties:
+        project:
+          type: integer
+          readOnly: true
+        total_tasks:
+          type: integer
+          readOnly: true
+        completed_tasks:
+          type: integer
+          readOnly: true
+        in_progress_tasks:
+          type: integer
+          readOnly: true
+        pending_tasks:
+          type: integer
+          readOnly: true
+        average_completion_time:
+          type: string
+          readOnly: true
+          nullable: true
+      required:
+      - average_completion_time
+      - completed_tasks
+      - in_progress_tasks
+      - pending_tasks
+      - project
+      - total_tasks
+    ProjectCreateUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Project name
+          maxLength: 255
+        description:
+          type: string
+          description: Detailed description of the project
+        owner:
+          type: integer
+          nullable: true
+          description: The user who owns the project
+        participants:
+          type: array
+          items:
+            type: integer
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ProjectStatusEnum'
+          description: |-
+            Project status
+
+            * `active` - Active
+            * `archived` - Archived
+      required:
+      - name
+      - participants
+    ProjectStatusEnum:
+      enum:
+      - active
+      - archived
+      type: string
+      description: |-
+        * `active` - Active
+        * `archived` - Archived
+    RoleEnum:
+      enum:
+      - superadmin
+      - admin
+      - manager
+      - employee
+      type: string
+      description: |-
+        * `superadmin` - Super Administrator
+        * `admin` - Administrator
+        * `manager` - Manager
+        * `employee` - Employee
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        assigned_to:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+          readOnly: true
+        assigned_to_ids:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        status:
+          $ref: '#/components/schemas/TaskStatusEnum'
+        deadline:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        project:
+          type: integer
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+        modified_by:
+          type: integer
+          readOnly: true
+          nullable: true
+      required:
+      - assigned_to
+      - assigned_to_ids
+      - created_at
+      - created_by
+      - deadline
+      - id
+      - modified_at
+      - modified_by
+      - project
+      - title
+    TaskStatusEnum:
+      enum:
+      - Pending
+      - In Progress
+      - Completed
+      type: string
+      description: |-
+        * `Pending` - Pending
+        * `In Progress` - In Progress
+        * `Completed` - Completed
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          description: |-
+            User role in the system
+
+            * `superadmin` - Super Administrator
+            * `admin` - Administrator
+            * `manager` - Manager
+            * `employee` - Employee
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 30
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 30
+        telegram_id:
+          type: string
+          nullable: true
+          description: Telegram ID for notifications
+          maxLength: 50
+        telegram_notifications_enabled:
+          type: boolean
+          description: Enable Telegram notifications
+        phone_number:
+          type: string
+          nullable: true
+          description: User phone number (optional)
+          maxLength: 15
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+          description: User date of birth (optional)
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          description: Profile picture (optional)
+      required:
+      - email
+      - id
+      - username
+    UserDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+        email:
+          type: string
+          format: email
+          readOnly: true
+          title: Email address
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+          description: |-
+            User role in the system
+
+            * `superadmin` - Super Administrator
+            * `admin` - Administrator
+            * `manager` - Manager
+            * `employee` - Employee
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 30
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 30
+        telegram_id:
+          type: string
+          nullable: true
+          description: Telegram ID for notifications
+          maxLength: 50
+        telegram_notifications_enabled:
+          type: boolean
+          description: Enable Telegram notifications
+        phone_number:
+          type: string
+          nullable: true
+          description: User phone number (optional)
+          maxLength: 15
+        date_of_birth:
+          type: string
+          format: date
+          nullable: true
+          description: User date of birth (optional)
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          description: Profile picture (optional)
+      required:
+      - email
+      - id
+      - role
+      - username
+    UserRegistration:
+      type: object
+      properties:
+        username:
+          type: string
+          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
+            only.
+          pattern: ^[\w.@+-]+$
+          maxLength: 150
+        email:
+          type: string
+          format: email
+          title: Email address
+          maxLength: 254
+        password:
+          type: string
+          writeOnly: true
+        password2:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
+      - password2
+      - username
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

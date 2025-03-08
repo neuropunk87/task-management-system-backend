@@ -112,7 +112,7 @@ WSGI_APPLICATION = 'task_management_system.wsgi.application'
 DATABASES = {
     'default': {
         "default": dj_database_url.config(default=os.getenv("DATABASE_URL")),
-        'ENGINE': env('DB_ENGINE', default=''),
+        'ENGINE': env('DB_ENGINE', default='django.db.backends.postgresql'),
         'NAME': env('DB_NAME', default=''),
         'USER': env('DB_USER', default=''),
         'PASSWORD': env('DB_PASSWORD', default=''),

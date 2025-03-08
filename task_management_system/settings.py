@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from pathlib import Path
 import environ
 from datetime import timedelta
+import dj_database_url
+import os
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -109,8 +111,9 @@ WSGI_APPLICATION = 'task_management_system.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 DATABASES = {
     'default': {
-        'ENGINE': env('DB_ENGINE', default='django.db.backends.postgresql'),
-        'NAME': env('DB_NAME', default='task_management_db'),
+        "default": dj_database_url.config(default=os.getenv("DATABASE_URL")),
+        'ENGINE': env('DB_ENGINE', default=''),
+        'NAME': env('DB_NAME', default=''),
         'USER': env('DB_USER', default=''),
         'PASSWORD': env('DB_PASSWORD', default=''),
         'HOST': env('DB_HOST', default=''),

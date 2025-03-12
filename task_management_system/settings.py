@@ -141,6 +141,9 @@ if os.getenv('REDIS_ENV') == 'production':
                     ssl_cert_reqs=None)
     CELERY_BROKER_URL = os.environ.get('REDIS_URL')
     CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
+    CELERY_REDIS_BACKEND_USE_SSL = {
+        "ssl_cert_reqs": "CERT_NONE",
+    }
     CELERY_CACHE_BACKEND = os.environ.get('REDIS_URL')
     CACHES = {
         "default": {

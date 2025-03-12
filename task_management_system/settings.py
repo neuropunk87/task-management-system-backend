@@ -12,9 +12,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import environ
+import os
 from datetime import timedelta
 import dj_database_url
-import os
+from urllib.parse import urlparse
+import redis
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -125,6 +127,45 @@ else:
         }
     }
 
+# Celery & Redis settings
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Europe/Kyiv'
+CELERY_ENABLE_UTC = True
+
+if os.getenv('REDIS_ENV') == 'production':
+    r1 = redis.from_url(os.environ.get("REDIS_URL"))
+    url = urlparse(os.environ.get("REDIS_URL"))
+    r2 = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"),
+                    ssl_cert_reqs=None)
+    CELERY_BROKER_URL = os.environ.get('REDIS_URL')
+    CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
+    CELERY_CACHE_BACKEND = os.environ.get('REDIS_URL')
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": os.environ.get('REDIS_URL'),
+            "OPTIONS": {
+                "ssl_cert_reqs": None
+            }
+        }
+    }
+else:
+    CELERY_BROKER_URL = env('REDIS_BROKER_URL')
+    CELERY_RESULT_BACKEND = env('REDIS_RESULT_BACKEND')
+    CELERY_CACHE_BACKEND = env('REDIS_CACHE_BACKEND')
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': env('REDIS_CACHE_BACKEND'),
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+            'KEY_PREFIX': 'task_management_system'
+        }
+    }
+
 # Email settings
 EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = env('EMAIL_HOST', default='smtp.gmail.com')
@@ -136,28 +177,6 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL',  default='')
 
 # Telegram Bot settings
 TELEGRAM_BOT_TOKEN = env('TELEGRAM_BOT_TOKEN', default=None)
-
-# Celery settings
-CELERY_BROKER_URL = env('REDIS_BROKER_URL')
-CELERY_RESULT_BACKEND = env('REDIS_RESULT_BACKEND')
-CELERY_CACHE_BACKEND = env('REDIS_CACHE_BACKEND')
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'Europe/Kyiv'
-CELERY_ENABLE_UTC = True
-
-# Redis cache settings
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': env('REDIS_CACHE_BACKEND'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        },
-        'KEY_PREFIX': 'task_management_system'
-    }
-}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators

@@ -165,7 +165,7 @@ async def main():
     await set_webhook()
     app = web.Application()
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
-    web.run_app(app, port=PORT)
+    web.run_app(app, host="0.0.0.0", port=PORT)
 
 
 if __name__ == "__main__":

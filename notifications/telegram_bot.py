@@ -17,19 +17,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-
 WEBHOOK_HOST = os.environ.get("HEROKU_APP_URL")
-WEBHOOK_PATH = "/webhook/"
-WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+PORT = int(os.getenv("PORT", 8000))
 
-if not TELEGRAM_BOT_TOKEN:
-    raise ValueError("TELEGRAM_BOT_TOKEN is not set in environment variables.")
+if not TELEGRAM_BOT_TOKEN or not WEBHOOK_HOST:
+    raise ValueError("TELEGRAM_BOT_TOKEN or WEBHOOK_HOST are not set.")
+
+WEBHOOK_PATH = f"/webhook/{TELEGRAM_BOT_TOKEN}/"
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 dp = Dispatcher()
-router = Router()
-
-dp.include_router(router)
 
 
 def main_keyboard():
@@ -46,11 +44,11 @@ def main_keyboard():
     )
 
 
-@router.message(Command(commands=["start"]))
+@dp.message(Command(commands=["start"]))
 async def start_handler(message: types.Message):
     user_chat_id = message.chat.id
-
     user_exists = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).exists)()
+
     if user_exists:
         user = await sync_to_async(CustomUser.objects.get)(telegram_id=user_chat_id)
         user.telegram_notifications_enabled = True
@@ -61,16 +59,16 @@ async def start_handler(message: types.Message):
         )
     else:
         await message.answer(
-            "Welcome! To receive notifications, link your Telegram ID in your profile.",
+            "Welcome! To receive notifications, please link your Telegram ID in your profile.",
             reply_markup=main_keyboard(),
         )
 
 
-@router.message(Command(commands=["enable_notifications"]))
+@dp.message(Command(commands=["enable_notifications"]))
 async def enable_notifications(message: types.Message):
     user_chat_id = message.chat.id
-
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
+
     if user:
         user.telegram_notifications_enabled = True
         await sync_to_async(user.save)()
@@ -79,16 +77,16 @@ async def enable_notifications(message: types.Message):
         await message.answer("Your Telegram ID is not linked to any user. Please link it in your profile.")
 
 
-@router.message(lambda message: message.text == "🔔 Enable Notifications")
+@dp.message(lambda message: message.text == "🔔 Enable Notifications")
 async def enable_notifications_button(message: types.Message):
     await enable_notifications(message)
 
 
-@router.message(Command(commands=["disable_notifications"]))
+@dp.message(Command(commands=["disable_notifications"]))
 async def disable_notifications(message: types.Message):
     user_chat_id = message.chat.id
-
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
+
     if user:
         user.telegram_notifications_enabled = False
         await sync_to_async(user.save)()
@@ -97,12 +95,12 @@ async def disable_notifications(message: types.Message):
         await message.answer("Your Telegram ID is not linked to any user. Please link it in your profile.")
 
 
-@router.message(lambda message: message.text == "🔕 Disable Notifications")
+@dp.message(lambda message: message.text == "🔕 Disable Notifications")
 async def disable_notifications_button(message: types.Message):
     await disable_notifications(message)
 
 
-@router.message(Command(commands=["help"]))
+@dp.message(Command(commands=["help"]))
 async def help_handler(message: types.Message):
     await message.answer(
         "Available commands:\n"
@@ -115,7 +113,7 @@ async def help_handler(message: types.Message):
     )
 
 
-@router.message(lambda message: message.text == "🛠 Help")
+@dp.message(lambda message: message.text == "🛠 Help")
 async def help_button_handler(message: types.Message):
     await help_handler(message)
 
@@ -144,16 +142,12 @@ async def help_button_handler(message: types.Message):
 #     await list_notifications(message)
 
 
-@router.message()
+@dp.message()
 async def fallback_handler(message: types.Message):
     await message.answer(
         "Command not recognized. Use /help or the buttons below for available options.",
         reply_markup=main_keyboard()
     )
-
-
-async def set_webhook():
-    await bot.set_webhook(url=WEBHOOK_URL)
 
 
 async def webhook_handler(request):
@@ -163,17 +157,17 @@ async def webhook_handler(request):
     return web.Response()
 
 
+async def set_webhook():
+    await bot.set_webhook(url=WEBHOOK_URL)
+
+
 async def main():
     await set_webhook()
     app = web.Application()
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
-
-    loop = asyncio.get_event_loop()
-    loop.create_task(web._run_app(app, port=int(os.environ.get("PORT", 8000))))
+    web.run_app(app, port=PORT)
 
 
 if __name__ == "__main__":
     import asyncio
-
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.run(main())

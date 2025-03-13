@@ -1,28 +1,45 @@
 import django
 import os
+
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "task_management_system.settings")
 django.setup()
 
 import logging
+from aiohttp import web
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters.command import Command
 from asgiref.sync import sync_to_async
-from django.conf import settings
+from task_management_system import settings
 from users.models import CustomUser
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+WEBHOOK_HOST = os.environ.get("HEROKU_APP_URL")
+WEBHOOK_PATH = f"/webhook/{settings.TELEGRAM_BOT_TOKEN}/"
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+
+if not TELEGRAM_BOT_TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN is not set in environment variables.")
+
+bot = Bot(token=TELEGRAM_BOT_TOKEN)
+dp = Dispatcher()
 router = Router()
+
+dp.include_router(router)
 
 
 def main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🔔 Enable Notifications"), KeyboardButton(text="🔕 Disable Notifications")],
+            [
+                KeyboardButton(text="🔔 Enable Notifications"),
+                KeyboardButton(text="🔕 Disable Notifications")
+            ],
             [KeyboardButton(text="🛠 Help")],
         ],
         resize_keyboard=True,
@@ -136,10 +153,23 @@ async def fallback_handler(message: types.Message):
     )
 
 
+async def set_webhook():
+    await bot.set_webhook(url=WEBHOOK_URL)
+
+
+async def webhook_handler(request):
+    body = await request.json()
+    update = types.Update(**body)
+    await dp.feed_update(bot, update)
+    return web.Response()
+
+
 async def main():
-    dp = Dispatcher()
-    dp.include_router(router)
-    await dp.start_polling(bot)
+    await set_webhook()
+    app = web.Application()
+    app.router.add_post(WEBHOOK_PATH, webhook_handler)
+    web.run_app(app, port=int(os.environ.get("PORT", 8000)))
+
 
 if __name__ == "__main__":
     import asyncio

@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 
 WEBHOOK_HOST = os.environ.get("HEROKU_APP_URL")
-WEBHOOK_PATH = f"/webhook/{TELEGRAM_BOT_TOKEN}/"
+WEBHOOK_PATH = "/webhook/"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
 if not TELEGRAM_BOT_TOKEN:

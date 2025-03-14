@@ -5,6 +5,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "task_management_system.settings
 django.setup()
 
 import logging
+import asyncio
 from aiohttp import web
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
@@ -168,9 +169,13 @@ async def main():
     await set_webhook()
     app = web.Application()
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
-    web.run_app(app, port=PORT)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, port=PORT)
+    await site.start()
+    logger.info(f"Bot is running with webhook on {WEBHOOK_URL}")
 
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())

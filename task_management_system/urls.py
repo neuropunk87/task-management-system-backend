@@ -21,6 +21,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
+from notifications.views import telegram_webhook_view
 
 
 def home_view(request):
@@ -36,6 +37,8 @@ urlpatterns = [
     path('api/tasks/', include('tasks.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/analytics/', include('analytics.urls')),
+
+    path('webhook/<str:token>/', telegram_webhook_view, name='telegram-webhook'),
 
     # API Schema
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

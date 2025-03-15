@@ -4,6 +4,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.status import HTTP_200_OK, HTTP_404_NOT_FOUND
 from notifications.models import Notification
 from notifications.serializers import NotificationSerializer
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+from django.views import View
+import json
 
 
 class NotificationListView(ListCreateAPIView):
@@ -25,3 +30,17 @@ class MarkAsReadView(GenericAPIView):
             return Response({"detail": "Notification marked as read."}, status=HTTP_200_OK)
         except Notification.DoesNotExist:
             return Response({"detail": "Notification not found."}, status=HTTP_404_NOT_FOUND)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TelegramWebhookView(View):
+    def post(self, request, token):
+        try:
+            data = json.loads(request.body)
+            print("Incoming Telegram data:", data)
+            return JsonResponse({"status": "ok"}, status=200)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+
+telegram_webhook_view = TelegramWebhookView.as_view()

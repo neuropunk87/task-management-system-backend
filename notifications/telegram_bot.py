@@ -167,8 +167,14 @@ async def webhook_handler(request):
     return web.Response(status=200)
 
 
+async def on_shutdown(app):
+    await bot.session.close()
+
+app = web.Application()
+app.on_shutdown.append(on_shutdown)
+
+
 async def main():
-    app = web.Application()
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
 
     runner = web.AppRunner(app)
@@ -177,12 +183,6 @@ async def main():
     await set_webhook()
     await site.start()
     logger.info(f"Bot is running with webhook on {WEBHOOK_URL}")
-
-    async def on_shutdown():
-        await bot.session.close()
-
-    app.on_shutdown.append(on_shutdown)
-
     await asyncio.Event().wait()
 
 if __name__ == "__main__":

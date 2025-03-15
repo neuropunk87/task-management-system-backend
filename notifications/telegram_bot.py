@@ -155,26 +155,29 @@ async def fallback_handler(message: types.Message):
 
 
 async def set_webhook():
-    await bot.set_webhook(url=WEBHOOK_URL)
+    webhook_info = await bot.get_webhook_info()
+    if webhook_info.url != WEBHOOK_URL:
+        logger.info(f"Setting new webhook: {WEBHOOK_URL}")
+        await bot.set_webhook(url=WEBHOOK_URL)
 
 
 async def webhook_handler(request):
     body = await request.json()
     update = types.Update(**body)
     await dp.feed_update(bot, update)
-    return web.Response()
+    return web.Response(status=200)
 
 
 async def main():
-    await set_webhook()
     app = web.Application()
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
+
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, port=PORT)
+    site = web.TCPSite(runner, host='0.0.0.0', port=PORT)
+    await set_webhook()
     await site.start()
     logger.info(f"Bot is running with webhook on {WEBHOOK_URL}")
-
     await asyncio.Event().wait()
 
 if __name__ == "__main__":

@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 WEBHOOK_HOST = os.environ.get("HEROKU_APP_URL")
-PORT = int(os.getenv("PORT", 8000))
 
 if not TELEGRAM_BOT_TOKEN or not WEBHOOK_HOST:
     raise ValueError("TELEGRAM_BOT_TOKEN or WEBHOOK_HOST are not set.")
@@ -174,10 +173,16 @@ async def main():
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host='0.0.0.0', port=PORT)
+    site = web.TCPSite(runner, host='0.0.0.0', port=8443)
     await set_webhook()
     await site.start()
     logger.info(f"Bot is running with webhook on {WEBHOOK_URL}")
+
+    async def on_shutdown():
+        await bot.session.close()
+
+    app.on_shutdown.append(on_shutdown)
+
     await asyncio.Event().wait()
 
 if __name__ == "__main__":

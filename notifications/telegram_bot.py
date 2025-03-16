@@ -12,6 +12,7 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters.command import Command
 from asgiref.sync import sync_to_async
 from users.models import CustomUser
+from notifications.models import Notification
 
 
 logging.basicConfig(level=logging.INFO)
@@ -57,12 +58,12 @@ async def start_handler(message: types.Message):
         user.telegram_notifications_enabled = True
         await sync_to_async(user.save)()
         await message.answer(
-            "Welcome! Notifications are now enabled. You will receive task updates and deadline reminders.",
+            "✅ Welcome! Notifications are now enabled. You will receive task updates and deadline reminders.",
             reply_markup=main_keyboard(),
         )
     else:
         await message.answer(
-            "Welcome! To receive notifications, please link your Telegram ID in your profile.",
+            "🚀 Welcome! To receive notifications, please link your Telegram ID in your profile.",
             reply_markup=main_keyboard(),
         )
 
@@ -75,9 +76,9 @@ async def enable_notifications(message: types.Message):
     if user:
         user.telegram_notifications_enabled = True
         await sync_to_async(user.save)()
-        await message.answer("Notifications have been enabled. You will now receive updates.")
+        await message.answer("✅ Notifications enabled. You will now receive updates.")
     else:
-        await message.answer("Your Telegram ID is not linked to any user. Please link it in your profile.")
+        await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
 
 
 @router.message(lambda message: message.text == "🔔 Enable Notifications")
@@ -93,9 +94,9 @@ async def disable_notifications(message: types.Message):
     if user:
         user.telegram_notifications_enabled = False
         await sync_to_async(user.save)()
-        await message.answer("Notifications have been disabled. You will no longer receive updates.")
+        await message.answer("🔕 Notifications disabled. You will no longer receive updates.")
     else:
-        await message.answer("Your Telegram ID is not linked to any user. Please link it in your profile.")
+        await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
 
 
 @router.message(lambda message: message.text == "🔕 Disable Notifications")
@@ -106,12 +107,12 @@ async def disable_notifications_button(message: types.Message):
 @router.message(Command(commands=["help"]))
 async def help_handler(message: types.Message):
     await message.answer(
-        "Available commands:\n"
-        "/start - Start the bot and enable notifications\n"
+        "📌 Available commands:\n"
+        "/start - Start bot and enable notifications\n"
         "/enable_notifications - Enable notifications\n"
         "/disable_notifications - Disable notifications\n"
         "/help - Show help information\n"
-        "You can also use the buttons below for easy navigation.",
+        "🔹 You can also use the buttons below for easy navigation.",
         reply_markup=main_keyboard(),
     )
 
@@ -148,7 +149,7 @@ async def help_button_handler(message: types.Message):
 @router.message()
 async def fallback_handler(message: types.Message):
     await message.answer(
-        "Command not recognized. Use /help or the buttons below for available options.",
+        "❌ Unknown command. Use /help or the buttons below for available options.",
         reply_markup=main_keyboard()
     )
 
@@ -158,11 +159,14 @@ async def set_webhook():
     if webhook_info.url != WEBHOOK_URL:
         logger.info(f"Setting new webhook: {WEBHOOK_URL}")
         await bot.set_webhook(url=WEBHOOK_URL)
+    else:
+        logger.info("Webhook is already set.")
 
 
 async def webhook_handler(request):
     body = await request.json()
     update = types.Update(**body)
+    logger.info(f"Webhook received update: {update}")
     await dp.feed_update(bot, update)
     return web.Response(status=200)
 
@@ -182,7 +186,8 @@ async def main():
     site = web.TCPSite(runner, host='0.0.0.0', port=8443)
     await set_webhook()
     await site.start()
-    logger.info(f"Bot is running with webhook on {WEBHOOK_URL}")
+
+    logger.info(f"✅ Bot is running with webhook on {WEBHOOK_URL}")
     await asyncio.Event().wait()
 
 if __name__ == "__main__":

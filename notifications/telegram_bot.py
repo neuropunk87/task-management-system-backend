@@ -7,9 +7,8 @@ django.setup()
 import logging
 import asyncio
 from aiohttp import web
-from aiogram import Bot, Dispatcher, Router, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters.command import Command
+from aiogram import Bot, Dispatcher, Router, types, F
+from aiogram.filters import Command
 from asgiref.sync import sync_to_async
 from users.models import CustomUser
 from notifications.models import Notification
@@ -35,22 +34,27 @@ dp.include_router(router)
 
 
 def main_keyboard():
-    return ReplyKeyboardMarkup(
+    return types.ReplyKeyboardMarkup(
         keyboard=[
             [
-                KeyboardButton(text="🔔 Enable Notifications"),
-                KeyboardButton(text="🔕 Disable Notifications")
+                types.KeyboardButton(text="🔔 Enable Notifications"),
+                types.KeyboardButton(text="🔕 Disable Notifications")
             ],
-            [KeyboardButton(text="🛠 Help")],
+            [
+                types.KeyboardButton(text="📬 Show List Notifications"),
+                types.KeyboardButton(text="🛠 Help")
+            ],
         ],
         resize_keyboard=True,
         one_time_keyboard=True,
     )
 
 
-@router.message(Command(commands=["start"]))
+@router.message(Command("start"))
 async def start_handler(message: types.Message):
     user_chat_id = message.chat.id
+    logger.info(f"Start command received from {user_chat_id}")
+
     user_exists = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).exists)()
 
     if user_exists:
@@ -68,9 +72,11 @@ async def start_handler(message: types.Message):
         )
 
 
-@router.message(Command(commands=["enable_notifications"]))
+@router.message(Command("enable_notifications"))
 async def enable_notifications(message: types.Message):
     user_chat_id = message.chat.id
+    logger.info(f"Enable notifications command received from {user_chat_id}")
+
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
 
     if user:
@@ -81,14 +87,16 @@ async def enable_notifications(message: types.Message):
         await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
 
 
-@router.message(lambda message: message.text == "🔔 Enable Notifications")
+@router.message(F.text == "🔔 Enable Notifications")
 async def enable_notifications_button(message: types.Message):
     await enable_notifications(message)
 
 
-@router.message(Command(commands=["disable_notifications"]))
+@router.message(Command("disable_notifications"))
 async def disable_notifications(message: types.Message):
     user_chat_id = message.chat.id
+    logger.info(f"Disable notifications command received from {user_chat_id}")
+
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
 
     if user:
@@ -99,55 +107,62 @@ async def disable_notifications(message: types.Message):
         await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
 
 
-@router.message(lambda message: message.text == "🔕 Disable Notifications")
+@router.message(F.text == "🔕 Disable Notifications")
 async def disable_notifications_button(message: types.Message):
     await disable_notifications(message)
 
 
-@router.message(Command(commands=["help"]))
+@router.message(Command("list_notifications"))
+async def list_notifications(message: types.Message):
+    user_chat_id = message.chat.id
+    logger.info(f"Show list notifications command received from {user_chat_id}")
+
+    notifications = await sync_to_async(
+        lambda: list(
+            Notification.objects.filter(user__telegram_id=user_chat_id, is_read=False)
+            .select_related("task")
+        ),
+        thread_sensitive=True
+    )()
+
+    if notifications:
+        response = "\n\n".join(
+            [f"📬 Task: {n.task.title if n.task else 'No Task'}\n{n.message}" for n in notifications]
+        )
+    else:
+        response = "📭 No unread notifications."
+
+    await message.answer(response)
+
+
+@router.message(F.text == "📬 Show List Notifications")
+async def list_notifications_button(message: types.Message):
+    await list_notifications(message)
+
+
+@router.message(Command("help"))
 async def help_handler(message: types.Message):
     await message.answer(
         "📌 Available commands:\n"
         "/start - Start bot and enable notifications\n"
         "/enable_notifications - Enable notifications\n"
         "/disable_notifications - Disable notifications\n"
+        "/list_notifications - Show unread notifications\n"
         "/help - Show help information\n"
         "🔹 You can also use the buttons below for easy navigation.",
         reply_markup=main_keyboard(),
     )
 
 
-@router.message(lambda message: message.text == "🛠 Help")
+@router.message(F.text == "🛠 Help")
 async def help_button_handler(message: types.Message):
     await help_handler(message)
 
 
-# @router.message(Command(commands=["list_notifications"]))
-# async def list_notifications(message: types.Message):
-#     user_chat_id = message.chat.id
-#
-#     notifications = await sync_to_async(
-#         lambda: list(Notification.objects.filter(user__telegram_id=user_chat_id, is_read=False).select_related("task")),
-#         thread_sensitive=True
-#     )()
-#
-#     if notifications:
-#         response = "\n\n".join(
-#             [f"📬 Task: {getattr(n.task, 'title', 'No Task')}\n{n.message}" for n in notifications]
-#             # [f"📬 Task: {n.task.title if n.task else 'No Task'}\n{n.message}" for n in notifications]
-#         )
-#         await message.answer(response)
-#     else:
-#         await message.answer("No notifications.")
-#
-#
-# @router.message(lambda message: message.text == "📬 Show List Notifications")
-# async def list_notifications_button(message: types.Message):
-#     await list_notifications(message)
-
-
 @router.message()
 async def fallback_handler(message: types.Message):
+    logger.info(f"Unknown command received: {message.text}")
+
     await message.answer(
         "❌ Unknown command. Use /help or the buttons below for available options.",
         reply_markup=main_keyboard()
@@ -165,9 +180,10 @@ async def set_webhook():
 
 async def webhook_handler(request):
     body = await request.json()
-    update = types.Update(**body)
+    update = types.Update.model_validate(body)
     logger.info(f"Webhook received update: {update}")
-    await dp.feed_update(bot, update)
+
+    await dp.update.update(update, bot)
     return web.Response(status=200)
 
 

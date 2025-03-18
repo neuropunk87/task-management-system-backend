@@ -4,6 +4,7 @@ import os
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "task_management_system.settings")
 django.setup()
 
+import sys
 import logging
 import asyncio
 from aiohttp import web
@@ -14,7 +15,11 @@ from users.models import CustomUser
 from notifications.models import Notification
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -36,14 +41,10 @@ dp.include_router(router)
 def main_keyboard():
     return types.ReplyKeyboardMarkup(
         keyboard=[
-            [
-                types.KeyboardButton(text="🔔 Enable Notifications"),
-                types.KeyboardButton(text="🔕 Disable Notifications")
-            ],
-            [
-                types.KeyboardButton(text="📬 Show List Notifications"),
-                types.KeyboardButton(text="🛠 Help")
-            ],
+            [types.KeyboardButton(text="🔔 Enable Notifications"),
+             types.KeyboardButton(text="🔕 Disable Notifications")],
+            [types.KeyboardButton(text="📬 Show List Notifications"),
+             types.KeyboardButton(text="🛠 Help")],
         ],
         resize_keyboard=True,
         one_time_keyboard=True,
@@ -53,7 +54,7 @@ def main_keyboard():
 @router.message(Command("start"))
 async def start_handler(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"📩 Received /start from {user_chat_id}")
+    logger.info(f"📩 /start from {user_chat_id}")
 
     user_exists = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).exists)()
 
@@ -75,7 +76,7 @@ async def start_handler(message: types.Message):
 @router.message(Command("enable_notifications"))
 async def enable_notifications(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"📩 Received /enable_notifications from {user_chat_id}")
+    logger.info(f"📩 /enable_notifications from {user_chat_id}")
 
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
 
@@ -95,7 +96,7 @@ async def enable_notifications_button(message: types.Message):
 @router.message(Command("disable_notifications"))
 async def disable_notifications(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"📩 Received /disable_notifications from {user_chat_id}")
+    logger.info(f"📩 /disable_notifications from {user_chat_id}")
 
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
 
@@ -115,7 +116,7 @@ async def disable_notifications_button(message: types.Message):
 @router.message(Command("list_notifications"))
 async def list_notifications(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"📩 Received /list_notifications from {user_chat_id}")
+    logger.info(f"📩 /list_notifications from {user_chat_id}")
 
     try:
         notifications = await sync_to_async(
@@ -173,7 +174,7 @@ async def help_button_handler(message: types.Message):
 
 @router.message()
 async def fallback_handler(message: types.Message):
-    logger.info(f"📩 Unknown command received: {message.text}")
+    logger.info(f"📩 Unknown command: {message.text}")
 
     await message.answer(
         "❌ Unknown command. Use /help or the buttons below for available options.",
@@ -198,7 +199,7 @@ async def webhook_handler(request):
         update = types.Update.model_validate(body)
         logger.info(f"Webhook received update: {update}")
 
-        await dp.update.update(update, bot)
+        await dp.feed_update(bot, update)
         return web.Response(status=200)
     except Exception as e:
         logger.error(f"❌ Error processing update: {e}")

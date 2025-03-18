@@ -53,7 +53,7 @@ def main_keyboard():
 @router.message(Command("start"))
 async def start_handler(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"Start command received from {user_chat_id}")
+    logger.info(f"📩 Received /start from {user_chat_id}")
 
     user_exists = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).exists)()
 
@@ -75,7 +75,7 @@ async def start_handler(message: types.Message):
 @router.message(Command("enable_notifications"))
 async def enable_notifications(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"Enable notifications command received from {user_chat_id}")
+    logger.info(f"📩 Received /enable_notifications from {user_chat_id}")
 
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
 
@@ -95,7 +95,7 @@ async def enable_notifications_button(message: types.Message):
 @router.message(Command("disable_notifications"))
 async def disable_notifications(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"Disable notifications command received from {user_chat_id}")
+    logger.info(f"📩 Received /disable_notifications from {user_chat_id}")
 
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
 
@@ -115,28 +115,40 @@ async def disable_notifications_button(message: types.Message):
 @router.message(Command("list_notifications"))
 async def list_notifications(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"Show list notifications command received from {user_chat_id}")
+    logger.info(f"📩 Received /list_notifications from {user_chat_id}")
 
-    notifications = await sync_to_async(
-        lambda: list(
-            Notification.objects.filter(user__telegram_id=user_chat_id, is_read=False)
-            .select_related("task")
-        ),
-        thread_sensitive=True
-    )()
+    try:
+        notifications = await sync_to_async(
+            lambda: list(
+                Notification.objects.filter(user__telegram_id=user_chat_id, is_read=False)
+                .select_related("task")
+            ),
+            thread_sensitive=True
+        )()
 
-    if notifications:
-        response = "\n\n".join(
-            [f"📬 Task: {n.task.title if n.task else 'No Task'}\n{n.message}" for n in notifications]
-        )
-    else:
-        response = "📭 No unread notifications."
+        logger.info(f"🔎 Found {len(notifications)} notifications for user {user_chat_id}")
 
-    await message.answer(response)
+        if notifications:
+            response = "\n\n".join(
+                [f"📬 Task: {n.task.title if n.task else 'No Task'}\n{n.message}" for n in notifications]
+            )
+        else:
+            response = "📭 No unread notifications."
+
+        await message.answer(response)
+        logger.info(f"✅ Sent notifications to {user_chat_id}")
+
+
+    except Exception as e:
+        logger.error(f"❌ Error handling /list_notifications for {user_chat_id}: {e}")
+        await message.answer("⚠ An error occurred while fetching notifications.")
 
 
 @router.message(F.text == "📬 Show List Notifications")
 async def list_notifications_button(message: types.Message):
+    user_chat_id = message.chat.id
+    logger.info(f"📩 Button pressed: Show List Notifications by {user_chat_id}")
+
     await list_notifications(message)
 
 
@@ -161,7 +173,7 @@ async def help_button_handler(message: types.Message):
 
 @router.message()
 async def fallback_handler(message: types.Message):
-    logger.info(f"Unknown command received: {message.text}")
+    logger.info(f"📩 Unknown command received: {message.text}")
 
     await message.answer(
         "❌ Unknown command. Use /help or the buttons below for available options.",
@@ -180,11 +192,17 @@ async def set_webhook():
 
 async def webhook_handler(request):
     body = await request.json()
-    update = types.Update.model_validate(body)
-    logger.info(f"Webhook received update: {update}")
+    logger.info(f"📥 Incoming Telegram data: {body}")
 
-    await dp.update.update(update, bot)
-    return web.Response(status=200)
+    try:
+        update = types.Update.model_validate(body)
+        logger.info(f"Webhook received update: {update}")
+
+        await dp.update.update(update, bot)
+        return web.Response(status=200)
+    except Exception as e:
+        logger.error(f"❌ Error processing update: {e}")
+        return web.Response(status=500)
 
 
 async def on_shutdown(app):

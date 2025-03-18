@@ -36,10 +36,15 @@ class MarkAsReadView(GenericAPIView):
 class TelegramWebhookView(View):
     def post(self, request, token):
         try:
-            data = json.loads(request.body)
+            if not request.body:
+                return JsonResponse({"error": "Empty request body"}, status=400)
+
+            data = json.loads(request.body.decode("utf-8"))
             print("Incoming Telegram data:", data)
+
             return JsonResponse({"status": "ok"}, status=200)
         except json.JSONDecodeError:
+            print("Received non-JSON data:", request.body)
             return JsonResponse({"error": "Invalid JSON"}, status=400)
 
 

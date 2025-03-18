@@ -18,12 +18,13 @@ from notifications.models import Notification
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[logging.StreamHandler(sys.stderr)]
 )
 logger = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 WEBHOOK_HOST = os.environ.get("HEROKU_APP_URL")
+WEBHOOK_ALLOWED_UPDATES = ["message", "callback_query"]
 
 if not TELEGRAM_BOT_TOKEN or not WEBHOOK_HOST:
     raise ValueError("TELEGRAM_BOT_TOKEN or WEBHOOK_HOST are not set.")
@@ -34,7 +35,6 @@ WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 bot = Bot(token=TELEGRAM_BOT_TOKEN)
 dp = Dispatcher()
 router = Router()
-
 dp.include_router(router)
 
 
@@ -139,7 +139,6 @@ async def list_notifications(message: types.Message):
         await message.answer(response)
         logger.info(f"✅ Sent notifications to {user_chat_id}")
 
-
     except Exception as e:
         logger.error(f"❌ Error handling /list_notifications for {user_chat_id}: {e}")
         await message.answer("⚠ An error occurred while fetching notifications.")
@@ -186,7 +185,7 @@ async def set_webhook():
     webhook_info = await bot.get_webhook_info()
     if webhook_info.url != WEBHOOK_URL:
         logger.info(f"Setting new webhook: {WEBHOOK_URL}")
-        await bot.set_webhook(url=WEBHOOK_URL)
+        await bot.set_webhook(url=WEBHOOK_URL, allowed_updates=WEBHOOK_ALLOWED_UPDATES)
     else:
         logger.info("Webhook is already set.")
 
@@ -214,11 +213,14 @@ app.on_shutdown.append(on_shutdown)
 
 
 async def main():
+    dp.startup.register(set_webhook)
+    dp.shutdown.register(on_shutdown)
+
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host='0.0.0.0', port=8443)
+    site = web.TCPSite(runner)
     await set_webhook()
     await site.start()
 

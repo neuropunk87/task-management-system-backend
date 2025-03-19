@@ -11,6 +11,7 @@ from aiohttp import web
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
+from aiogram.client.default import DefaultBotProperties
 from asgiref.sync import sync_to_async
 from users.models import CustomUser
 from notifications.models import Notification
@@ -32,7 +33,7 @@ if not TELEGRAM_BOT_TOKEN or not WEBHOOK_HOST:
 WEBHOOK_PATH = f"/webhook/{TELEGRAM_BOT_TOKEN}/"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
+bot = Bot(token=TELEGRAM_BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher()
 router = Router()
 dp.include_router(router)
@@ -47,6 +48,7 @@ def main_keyboard():
              KeyboardButton(text="🛠 Help")],
         ],
         resize_keyboard=True,
+        one_time_keyboard=True
     )
 
 

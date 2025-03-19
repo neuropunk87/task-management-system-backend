@@ -47,136 +47,99 @@ def main_keyboard():
              KeyboardButton(text="🛠 Help")],
         ],
         resize_keyboard=True,
-        one_time_keyboard=False,
     )
 
 
-@router.message(Command(commands=["start"]))
+@router.message(Command("start"))
 async def start_handler(message: types.Message):
     user_chat_id = message.chat.id
     logger.info(f"📩 /start from {user_chat_id}")
 
-    user_exists = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).exists)()
+    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first, thread_sensitive=True)()
 
-    if user_exists:
-        user = await sync_to_async(CustomUser.objects.get)(telegram_id=user_chat_id)
+    if user:
         user.telegram_notifications_enabled = True
-        await sync_to_async(user.save)()
+        await sync_to_async(user.save, thread_sensitive=True)()
         await message.answer(
             "✅ Welcome! Notifications are now enabled. You will receive task updates and deadline reminders.",
             reply_markup=main_keyboard(),
         )
     else:
         await message.answer(
-            "🚀 Welcome! To receive notifications, please link your Telegram ID in your profile.",
-            reply_markup=main_keyboard(),
+            "🚀 Link your Telegram ID in your profile to receive notifications.",
+            reply_markup=main_keyboard()
         )
 
 
-@router.message(Command(commands=["enable_notifications"]))
+@router.message(Command("enable_notifications"))
+@router.message(lambda msg: msg.text == "🔔 Enable Notifications")
 async def enable_notifications(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"📩 /enable_notifications from {user_chat_id}")
-
-    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
+    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first, thread_sensitive=True)()
 
     if user:
         user.telegram_notifications_enabled = True
-        await sync_to_async(user.save)()
+        await sync_to_async(user.save, thread_sensitive=True)()
         await message.answer("✅ Notifications enabled. You will now receive updates.")
     else:
-        await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
+        await message.answer("❌ Link your Telegram ID in your profile.")
 
 
-@router.message(lambda message: message.text == "🔔 Enable Notifications")
-async def enable_notifications_button(message: types.Message):
-    await enable_notifications(message)
-
-
-@router.message(Command(commands=["disable_notifications"]))
+@router.message(Command("disable_notifications"))
+@router.message(lambda msg: msg.text == "🔕 Disable Notifications")
 async def disable_notifications(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"📩 /disable_notifications from {user_chat_id}")
-
-    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
+    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first, thread_sensitive=True)()
 
     if user:
         user.telegram_notifications_enabled = False
-        await sync_to_async(user.save)()
+        await sync_to_async(user.save, thread_sensitive=True)()
         await message.answer("🔕 Notifications disabled. You will no longer receive updates.")
     else:
-        await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
+        await message.answer("❌ Link your Telegram ID in your profile.")
 
 
-@router.message(lambda message: message.text == "🔕 Disable Notifications")
-async def disable_notifications_button(message: types.Message):
-    await disable_notifications(message)
-
-
-@router.message(Command(commands=["list_notifications"]))
+@router.message(Command("list_notifications"))
+@router.message(lambda msg: msg.text == "📬 Show List Notifications")
 async def list_notifications(message: types.Message):
     user_chat_id = message.chat.id
-    logger.info(f"📩 /list_notifications from {user_chat_id}")
 
     try:
         notifications = await sync_to_async(
-            lambda: list(
-                Notification.objects.filter(user__telegram_id=user_chat_id, is_read=False)
-                .select_related("task")
-            ),
+            lambda: list(Notification.objects.filter(user__telegram_id=user_chat_id, is_read=False).select_related("task")),
             thread_sensitive=True
         )()
 
-        logger.info(f"🔎 Found {len(notifications)} notifications for user {user_chat_id}")
-
         if notifications:
-            response = "\n\n".join(
-                [f"📬 Task: {n.task.title if n.task else 'No Task'}\n{n.message}" for n in notifications]
-            )
+            response = "\n\n".join([f"📬 Task: {n.task.title if n.task else 'No Task'}\n{n.message}" for n in notifications])
         else:
             response = "📭 No unread notifications."
 
         await message.answer(response)
-        logger.info(f"✅ Sent notifications to {user_chat_id}")
-
     except Exception as e:
-        logger.error(f"❌ Error handling /list_notifications for {user_chat_id}: {e}")
+        logger.error(f"❌ Error fetching notifications: {e}")
         await message.answer("⚠ An error occurred while fetching notifications.")
 
 
-@router.message(lambda message: message.text == "📬 Show List Notifications")
-async def list_notifications_button(message: types.Message):
-    user_chat_id = message.chat.id
-    logger.info(f"📩 Button pressed: Show List Notifications by {user_chat_id}")
-
-    await list_notifications(message)
-
-
-@router.message(Command(commands=["help"]))
+@router.message(Command("help"))
+@router.message(lambda msg: msg.text == "🛠 Help")
 async def help_handler(message: types.Message):
     await message.answer(
-        "📌 Available commands:\n"
+        "📌 Commands:\n"
         "/start - Start bot and enable notifications\n"
         "/enable_notifications - Enable notifications\n"
         "/disable_notifications - Disable notifications\n"
         "/list_notifications - Show unread notifications\n"
         "/help - Show help information\n"
-        "🔹 You can also use the buttons below for easy navigation.",
-        reply_markup=main_keyboard(),
+        "🔹 Use the buttons below for easy navigation.",
+        reply_markup=main_keyboard()
     )
-
-
-@router.message(lambda message: message.text == "🛠 Help")
-async def help_button_handler(message: types.Message):
-    await help_handler(message)
 
 
 @router.message()
 async def fallback_handler(message: types.Message):
-    logger.info(f"📩 Unknown command: {message.text}")
-
     await message.answer(
-        "❌ Unknown command. Use /help or the buttons below for available options.",
+        "❌ Unknown command. Use /help or the buttons below.",
         reply_markup=main_keyboard()
     )
 
@@ -192,30 +155,26 @@ async def set_webhook():
 
 async def webhook_handler(request):
     body = await request.json()
-    logger.info(f"📥 Incoming Telegram data: {body}")
 
     try:
-        update = types.Update(**body)
-        logger.info(f"Webhook received update: {update}")
-
+        update = types.Update.model_validate(body)
         await dp.feed_update(bot, update)
         return web.Response(status=200)
     except Exception as e:
-        logger.error(f"❌ Error processing update: {e}")
+        logger.error(f"❌ Webhook error: {e}")
         return web.Response(status=500)
 
 
 async def on_shutdown(app):
     await bot.session.close()
 
-app = web.Application()
-app.on_shutdown.append(on_shutdown)
-
 
 async def main():
     dp.startup.register(set_webhook)
     dp.shutdown.register(on_shutdown)
 
+    app = web.Application()
+    app.on_shutdown.append(on_shutdown)
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
 
     runner = web.AppRunner(app)
@@ -224,8 +183,9 @@ async def main():
     await set_webhook()
     await site.start()
 
-    logger.info(f"✅ Bot is running with webhook on {WEBHOOK_URL}")
+    logger.info(f"✅ Bot running with webhook on {WEBHOOK_URL}")
     await asyncio.Event().wait()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

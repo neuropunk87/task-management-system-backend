@@ -144,25 +144,33 @@ async def fallback_handler(message: types.Message):
     )
 
 
+async def reset_webhook():
+    logger.info("🚀 Resetting webhook before setting a new one...")
+    await bot.delete_webhook(drop_pending_updates=True)
+
+
 async def set_webhook():
-    webhook_info = await bot.get_webhook_info()
-    if webhook_info.url != WEBHOOK_URL:
-        logger.info(f"Setting new webhook: {WEBHOOK_URL}")
-        await bot.set_webhook(url=WEBHOOK_URL)
-    else:
-        logger.info("Webhook is already set.")
+    await reset_webhook()
+    await bot.set_webhook(url=WEBHOOK_URL)
+    logger.info(f"✅ Webhook set to {WEBHOOK_URL}")
 
 
 async def webhook_handler(request):
     body = await request.json()
+    logger.info(f"🔍 Received update: {body}")
 
     try:
         update = types.Update.model_validate(body)
-        await dp.feed_update(bot, update)
+        await dp.feed_update(bot=bot, update=update)
         return web.Response(status=200)
     except Exception as e:
         logger.error(f"❌ Webhook error: {e}")
         return web.Response(status=500)
+
+
+async def on_startup():
+    logger.info("🚀 Bot is starting...")
+    await dp.emit_startup()
 
 
 async def on_shutdown(app):
@@ -170,16 +178,14 @@ async def on_shutdown(app):
 
 
 async def main():
-    dp.startup.register(set_webhook)
-    dp.shutdown.register(on_shutdown)
-
     app = web.Application()
+    app.on_startup.append(lambda _: asyncio.create_task(on_startup()))
     app.on_shutdown.append(on_shutdown)
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner)
+    site = web.TCPSite(runner, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     await set_webhook()
     await site.start()
 

@@ -36,7 +36,6 @@ WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 bot = Bot(token=TELEGRAM_BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher()
 router = Router()
-dp.include_router(router)
 
 
 def main_keyboard():
@@ -146,6 +145,15 @@ async def fallback_handler(message: types.Message):
     )
 
 
+dp.message.register(start_handler, Command("start"))
+dp.message.register(enable_notifications, Command("enable_notifications"))
+dp.message.register(disable_notifications, Command("disable_notifications"))
+dp.message.register(list_notifications, Command("list_notifications"))
+dp.message.register(help_handler, Command("help"))
+dp.message.register(fallback_handler)
+dp.include_router(router)
+
+
 async def reset_webhook():
     logger.info("🚀 Resetting webhook before setting a new one...")
     await bot.delete_webhook(drop_pending_updates=True)
@@ -173,6 +181,7 @@ async def webhook_handler(request):
 async def on_startup():
     logger.info("🚀 Bot is starting...")
     await dp.emit_startup()
+    print("🔍 Registered message handlers:", dp.message.handlers)
 
 
 async def on_shutdown(app):
@@ -188,8 +197,8 @@ async def main():
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-    await set_webhook()
     await site.start()
+    await set_webhook()
 
     logger.info(f"✅ Bot running with webhook on {WEBHOOK_URL}")
     await asyncio.Event().wait()

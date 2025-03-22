@@ -10,7 +10,8 @@ import asyncio
 from aiohttp import web
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandStart
+from aiogram.client.default import DefaultBotProperties
 from asgiref.sync import sync_to_async
 from users.models import CustomUser
 from notifications.models import Notification
@@ -32,7 +33,7 @@ if not TELEGRAM_BOT_TOKEN or not WEBHOOK_HOST:
 WEBHOOK_PATH = f"/webhook/{TELEGRAM_BOT_TOKEN}/"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
+bot = Bot(token=TELEGRAM_BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher()
 router = Router()
 
@@ -49,7 +50,7 @@ def main_keyboard():
     )
 
 
-@router.message(Command("start"))
+@router.message(CommandStart())
 async def start_handler(message: types.Message):
     user_chat_id = message.chat.id
     logger.info(f"📩 /start from {user_chat_id}")
@@ -165,7 +166,7 @@ async def webhook_handler(request):
 
     try:
         update = types.Update.model_validate(body)
-        await dp.feed_update(bot=bot, update=update)
+        await dp._process_update(bot, update)
         return web.Response(status=200)
     except Exception as e:
         logger.error(f"❌ Webhook error: {e}")
@@ -196,9 +197,18 @@ async def main():
     site = web.TCPSite(runner, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
     await site.start()
 
+    print("Server running... Press Ctrl+C to stop")
     logger.info(f"✅ Bot running with webhook on {WEBHOOK_URL}")
-    await asyncio.Event().wait()
+
+    while True:
+        await asyncio.sleep(3600)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(main())

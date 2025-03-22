@@ -10,7 +10,8 @@ import asyncio
 from aiohttp import web
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters import Command
+from aiogram.filters import Command, CommandStart
+from aiogram.client.default import DefaultBotProperties
 from asgiref.sync import sync_to_async
 from users.models import CustomUser
 from notifications.models import Notification
@@ -32,9 +33,11 @@ if not TELEGRAM_BOT_TOKEN or not WEBHOOK_HOST:
 WEBHOOK_PATH = f"/webhook/{TELEGRAM_BOT_TOKEN}/"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
+bot = Bot(token=TELEGRAM_BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher()
 router = Router()
+
+dp.include_router(router)
 
 
 def main_keyboard():
@@ -49,7 +52,7 @@ def main_keyboard():
     )
 
 
-@router.message(Command("start"))
+@router.message(CommandStart())
 async def start_handler(message: types.Message):
     user_chat_id = message.chat.id
     logger.info(f"📩 /start from {user_chat_id}")
@@ -148,46 +151,37 @@ async def fallback_handler(message: types.Message):
     )
 
 
-async def reset_webhook():
-    logger.info("🚀 Resetting webhook...")
-    await bot.delete_webhook(drop_pending_updates=True)
-
-
 async def set_webhook():
-    await reset_webhook()
+    logger.info("🚀 Setting webhook...")
+    await bot.delete_webhook(drop_pending_updates=True)
     await bot.set_webhook(url=WEBHOOK_URL)
     logger.info(f"✅ Webhook set to {WEBHOOK_URL}")
 
 
 async def webhook_handler(request):
     body = await request.json()
-    logger.info(f"🔍 Received update: {body}")
+    update = types.Update.model_validate(body)
 
-    try:
-        update = types.Update.model_validate(body)
-        await dp.feed_update(bot=bot, update=update)
-        return web.Response(status=200)
-    except Exception as e:
-        logger.error(f"❌ Webhook error: {e}")
-        return web.Response(status=500)
+    await dp.feed_update(bot, update)
+
+    return web.Response(status=200)
 
 
-async def on_startup(app):
+async def on_startup():
     logger.info("🚀 Bot is starting...")
     await set_webhook()
 
 
-async def on_shutdown(app):
+async def on_shutdown():
     logger.info("⚠ Shutting down bot...")
     await bot.session.close()
 
 
 async def main():
-    dp.include_router(router)
     app = web.Application()
 
-    app.on_startup.append(on_startup)
-    app.on_shutdown.append(on_shutdown)
+    app.on_startup.append(lambda _: asyncio.create_task(on_startup()))
+    app.on_shutdown.append(lambda _: asyncio.create_task(on_shutdown()))
 
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
 
@@ -197,6 +191,7 @@ async def main():
     await site.start()
 
     logger.info(f"✅ Bot running with webhook on {WEBHOOK_URL}")
+
     await asyncio.Event().wait()
 
 

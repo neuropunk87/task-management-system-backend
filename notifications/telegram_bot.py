@@ -11,7 +11,6 @@ from aiohttp import web
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
-from aiogram.client.default import DefaultBotProperties
 from asgiref.sync import sync_to_async
 from users.models import CustomUser
 from notifications.models import Notification
@@ -24,16 +23,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-WEBHOOK_HOST = os.environ.get("HEROKU_APP_URL")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+WEBHOOK_HOST = os.getenv("HEROKU_APP_URL")
 
 if not TELEGRAM_BOT_TOKEN or not WEBHOOK_HOST:
-    raise ValueError("TELEGRAM_BOT_TOKEN or WEBHOOK_HOST are not set.")
+    raise ValueError("❌ TELEGRAM_BOT_TOKEN or WEBHOOK_HOST are not set.")
 
 WEBHOOK_PATH = f"/webhook/{TELEGRAM_BOT_TOKEN}/"
 WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
-bot = Bot(token=TELEGRAM_BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
+bot = Bot(token=TELEGRAM_BOT_TOKEN)
 dp = Dispatcher()
 router = Router()
 
@@ -46,8 +45,7 @@ def main_keyboard():
             [KeyboardButton(text="📬 Show List Notifications"),
              KeyboardButton(text="🛠 Help")],
         ],
-        resize_keyboard=True,
-        one_time_keyboard=True
+        resize_keyboard=True
     )
 
 
@@ -76,6 +74,8 @@ async def start_handler(message: types.Message):
 @router.message(lambda msg: msg.text == "🔔 Enable Notifications")
 async def enable_notifications(message: types.Message):
     user_chat_id = message.chat.id
+    logger.info(f"📩 Enable notifications for {user_chat_id}")
+
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first, thread_sensitive=True)()
 
     if user:
@@ -90,6 +90,8 @@ async def enable_notifications(message: types.Message):
 @router.message(lambda msg: msg.text == "🔕 Disable Notifications")
 async def disable_notifications(message: types.Message):
     user_chat_id = message.chat.id
+    logger.info(f"📩 Disable notifications for {user_chat_id}")
+
     user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first, thread_sensitive=True)()
 
     if user:
@@ -104,6 +106,7 @@ async def disable_notifications(message: types.Message):
 @router.message(lambda msg: msg.text == "📬 Show List Notifications")
 async def list_notifications(message: types.Message):
     user_chat_id = message.chat.id
+    logger.info(f"📩 Request list of notifications for {user_chat_id}")
 
     try:
         notifications = await sync_to_async(
@@ -126,11 +129,11 @@ async def list_notifications(message: types.Message):
 @router.message(lambda msg: msg.text == "🛠 Help")
 async def help_handler(message: types.Message):
     await message.answer(
-        "📌 Commands:\n"
+        "📌 Available commands:\n"
         "/start - Start bot and enable notifications\n"
         "/enable_notifications - Enable notifications\n"
         "/disable_notifications - Disable notifications\n"
-        "/list_notifications - Show unread notifications\n"
+        "/list_notifications - Show notifications\n"
         "/help - Show help information\n"
         "🔹 Use the buttons below for easy navigation.",
         reply_markup=main_keyboard()
@@ -145,17 +148,8 @@ async def fallback_handler(message: types.Message):
     )
 
 
-dp.message.register(start_handler, Command("start"))
-dp.message.register(enable_notifications, Command("enable_notifications"))
-dp.message.register(disable_notifications, Command("disable_notifications"))
-dp.message.register(list_notifications, Command("list_notifications"))
-dp.message.register(help_handler, Command("help"))
-dp.message.register(fallback_handler)
-dp.include_router(router)
-
-
 async def reset_webhook():
-    logger.info("🚀 Resetting webhook before setting a new one...")
+    logger.info("🚀 Resetting webhook...")
     await bot.delete_webhook(drop_pending_updates=True)
 
 
@@ -178,27 +172,29 @@ async def webhook_handler(request):
         return web.Response(status=500)
 
 
-async def on_startup():
+async def on_startup(app):
     logger.info("🚀 Bot is starting...")
-    await dp.emit_startup()
-    print("🔍 Registered message handlers:", dp.message.handlers)
+    await set_webhook()
 
 
 async def on_shutdown(app):
+    logger.info("⚠ Shutting down bot...")
     await bot.session.close()
 
 
 async def main():
+    dp.include_router(router)
     app = web.Application()
-    app.on_startup.append(lambda _: asyncio.create_task(on_startup()))
+
+    app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
+
     app.router.add_post(WEBHOOK_PATH, webhook_handler)
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    site = web.TCPSite(runner, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
     await site.start()
-    await set_webhook()
 
     logger.info(f"✅ Bot running with webhook on {WEBHOOK_URL}")
     await asyncio.Event().wait()

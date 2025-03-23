@@ -11,6 +11,7 @@ class ProjectAnalyticsAdmin(admin.ModelAdmin):
     list_display = ('project', 'total_tasks', 'completed_tasks', 'in_progress_tasks', 'pending_tasks', 'average_completion_time')
     search_fields = ('project__name',)
     ordering = ('-total_tasks',)
+    change_list_template = "admin/analytics/projectanalytics/change_list.html"
 
     fieldsets = (
         ('Project Analytics', {

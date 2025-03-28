@@ -5,12 +5,11 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "task_management_system.settings
 django.setup()
 
 import sys
-import logging
 import asyncio
-from aiohttp import web
+import logging
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters import Command, CommandStart
+from aiogram.filters.command import Command
 from aiogram.client.default import DefaultBotProperties
 from asgiref.sync import sync_to_async
 from users.models import CustomUser
@@ -25,19 +24,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-WEBHOOK_HOST = os.getenv("HEROKU_APP_URL")
 
-if not TELEGRAM_BOT_TOKEN or not WEBHOOK_HOST:
-    raise ValueError("❌ TELEGRAM_BOT_TOKEN or WEBHOOK_HOST are not set.")
-
-WEBHOOK_PATH = f"/webhook/{TELEGRAM_BOT_TOKEN}/"
-WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
+if not TELEGRAM_BOT_TOKEN:
+    raise ValueError("❌ TELEGRAM_BOT_TOKEN are not set.")
 
 bot = Bot(token=TELEGRAM_BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
 dp = Dispatcher()
 router = Router()
-
-dp.include_router(router)
 
 
 def main_keyboard():
@@ -45,102 +38,85 @@ def main_keyboard():
         keyboard=[
             [KeyboardButton(text="🔔 Enable Notifications"),
              KeyboardButton(text="🔕 Disable Notifications")],
-            [KeyboardButton(text="📬 Show List Notifications"),
-             KeyboardButton(text="🛠 Help")],
+            [KeyboardButton(text="🛠 Help")],
         ],
-        resize_keyboard=True
+        resize_keyboard=True,
+        one_time_keyboard=True,
     )
 
 
-@router.message(CommandStart())
+@router.message(Command("start"))
 async def start_handler(message: types.Message):
     user_chat_id = message.chat.id
     logger.info(f"📩 /start from {user_chat_id}")
 
-    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first, thread_sensitive=True)()
-
-    if user:
+    user_exists = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).exists)()
+    if user_exists:
+        user = await sync_to_async(CustomUser.objects.get)(telegram_id=user_chat_id)
         user.telegram_notifications_enabled = True
-        await sync_to_async(user.save, thread_sensitive=True)()
+        await sync_to_async(user.save)()
         await message.answer(
             "✅ Welcome! Notifications are now enabled. You will receive task updates and deadline reminders.",
             reply_markup=main_keyboard(),
         )
     else:
         await message.answer(
-            "🚀 Link your Telegram ID in your profile to receive notifications.",
-            reply_markup=main_keyboard()
+            "🚀 Welcome! To receive notifications, link your Telegram ID in your profile.",
+            reply_markup=main_keyboard(),
         )
 
 
 @router.message(Command("enable_notifications"))
-@router.message(lambda msg: msg.text == "🔔 Enable Notifications")
 async def enable_notifications(message: types.Message):
     user_chat_id = message.chat.id
     logger.info(f"📩 Enable notifications for {user_chat_id}")
 
-    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first, thread_sensitive=True)()
-
+    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
     if user:
         user.telegram_notifications_enabled = True
-        await sync_to_async(user.save, thread_sensitive=True)()
-        await message.answer("✅ Notifications enabled. You will now receive updates.")
+        await sync_to_async(user.save)()
+        await message.answer("✅ Notifications have been enabled. You will now receive updates.")
     else:
-        await message.answer("❌ Link your Telegram ID in your profile.")
+        await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
+
+@router.message(lambda message: message.text == "🔔 Enable Notifications")
+async def enable_notifications_button(message: types.Message):
+    await enable_notifications(message)
 
 
 @router.message(Command("disable_notifications"))
-@router.message(lambda msg: msg.text == "🔕 Disable Notifications")
 async def disable_notifications(message: types.Message):
     user_chat_id = message.chat.id
     logger.info(f"📩 Disable notifications for {user_chat_id}")
 
-    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first, thread_sensitive=True)()
-
+    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
     if user:
         user.telegram_notifications_enabled = False
-        await sync_to_async(user.save, thread_sensitive=True)()
-        await message.answer("🔕 Notifications disabled. You will no longer receive updates.")
+        await sync_to_async(user.save)()
+        await message.answer("🔕 Notifications have been disabled. You will no longer receive updates.")
     else:
-        await message.answer("❌ Link your Telegram ID in your profile.")
+        await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
 
-
-@router.message(Command("list_notifications"))
-@router.message(lambda msg: msg.text == "📬 Show List Notifications")
-async def list_notifications(message: types.Message):
-    user_chat_id = message.chat.id
-    logger.info(f"📩 Request list of notifications for {user_chat_id}")
-
-    try:
-        notifications = await sync_to_async(
-            lambda: list(Notification.objects.filter(user__telegram_id=user_chat_id, is_read=False).select_related("task")),
-            thread_sensitive=True
-        )()
-
-        if notifications:
-            response = "\n\n".join([f"📬 Task: {n.task.title if n.task else 'No Task'}\n{n.message}" for n in notifications])
-        else:
-            response = "📭 No unread notifications."
-
-        await message.answer(response)
-    except Exception as e:
-        logger.error(f"❌ Error fetching notifications: {e}")
-        await message.answer("⚠ An error occurred while fetching notifications.")
+@router.message(lambda message: message.text == "🔕 Disable Notifications")
+async def disable_notifications_button(message: types.Message):
+    await disable_notifications(message)
 
 
 @router.message(Command("help"))
-@router.message(lambda msg: msg.text == "🛠 Help")
 async def help_handler(message: types.Message):
     await message.answer(
         "📌 Available commands:\n"
         "/start - Start bot and enable notifications\n"
         "/enable_notifications - Enable notifications\n"
         "/disable_notifications - Disable notifications\n"
-        "/list_notifications - Show notifications\n"
         "/help - Show help information\n"
         "🔹 Use the buttons below for easy navigation.",
         reply_markup=main_keyboard()
     )
+
+@router.message(lambda message: message.text == "🛠 Help")
+async def help_button_handler(message: types.Message):
+    await help_handler(message)
 
 
 @router.message()
@@ -151,48 +127,10 @@ async def fallback_handler(message: types.Message):
     )
 
 
-async def set_webhook():
-    logger.info("🚀 Setting webhook...")
-    await bot.delete_webhook(drop_pending_updates=True)
-    await bot.set_webhook(url=WEBHOOK_URL)
-    logger.info(f"✅ Webhook set to {WEBHOOK_URL}")
-
-
-async def webhook_handler(request):
-    body = await request.json()
-    update = types.Update.model_validate(body)
-
-    await dp.feed_update(bot, update)
-
-    return web.Response(status=200)
-
-
-async def on_startup():
-    logger.info("🚀 Bot is starting...")
-    await set_webhook()
-
-
-async def on_shutdown():
-    logger.info("⚠ Shutting down bot...")
-    await bot.session.close()
-
-
 async def main():
-    app = web.Application()
-
-    app.on_startup.append(lambda _: asyncio.create_task(on_startup()))
-    app.on_shutdown.append(lambda _: asyncio.create_task(on_shutdown()))
-
-    app.router.add_post(WEBHOOK_PATH, webhook_handler)
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
-    await site.start()
-
-    logger.info(f"✅ Bot running with webhook on {WEBHOOK_URL}")
-
-    await asyncio.Event().wait()
+    dp.include_router(router)
+    logger.info("🚀 Bot is running in long polling mode")
+    await dp.start_polling(bot)
 
 
 if __name__ == "__main__":

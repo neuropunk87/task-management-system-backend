@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
     'django_filters',
     'django_celery_results',
@@ -94,6 +95,7 @@ ROOT_URLCONF = 'task_management_system.urls'
 TEMPLATES = [{
     'BACKEND': 'django.template.backends.django.DjangoTemplates',
     'DIRS': [
+        BASE_DIR / 'task_management_system/templates',
         BASE_DIR / 'analytics/templates',
     ],
     'APP_DIRS': True,
@@ -138,8 +140,7 @@ CELERY_ENABLE_UTC = True
 if os.getenv('REDIS_ENV') == 'production':
     r1 = redis.from_url(os.environ.get("REDIS_URL"))
     url = urlparse(os.environ.get("REDIS_URL"))
-    r2 = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"),
-                    ssl_cert_reqs=None)
+    r2 = redis.Redis(host=url.hostname, port=url.port, password=url.password, ssl=(url.scheme == "rediss"), ssl_cert_reqs=None)
     CELERY_BROKER_URL = os.environ.get('REDIS_URL')
     CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
     CELERY_REDIS_BACKEND_USE_SSL = {
@@ -151,7 +152,7 @@ if os.getenv('REDIS_ENV') == 'production':
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
             "LOCATION": os.environ.get('REDIS_URL'),
             "OPTIONS": {
-                "ssl_cert_reqs": None
+                "ssl_cert_reqs": False,
             }
         }
     }
@@ -165,6 +166,7 @@ else:
             'LOCATION': env('REDIS_CACHE_BACKEND'),
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'SOCKET_CONNECT_TIMEOUT': 5,
             },
             'KEY_PREFIX': 'task_management_system'
         }
@@ -200,8 +202,9 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'static'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

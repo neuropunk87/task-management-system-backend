@@ -63,7 +63,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'users',
     'projects',
-    'tasks',
+    'tasks.apps.TasksConfig',
     'notifications',
     'analytics',
 ]

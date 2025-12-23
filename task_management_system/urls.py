@@ -26,6 +26,13 @@ from django.http import JsonResponse
 def home_view(request):
     return JsonResponse({"message": "API is running"}, status=200)
 
+def debug_ip_view(request):
+    return JsonResponse({
+        "REMOTE_ADDR (What Django sees)": request.META.get('REMOTE_ADDR'),
+        "HTTP_X_FORWARDED_FOR (Real Headers)": request.META.get('HTTP_X_FORWARDED_FOR'),
+        "All Headers": {k: str(v) for k, v in request.META.items() if k.startswith('HTTP_')}
+    })
+
 
 urlpatterns = [
     path('', home_view),
@@ -41,6 +48,7 @@ urlpatterns = [
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/docs/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('debug-ip/', debug_ip_view),
 ]
 
 if settings.DEBUG:

@@ -3,6 +3,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.utils.translation import gettext_lazy as _
+from PIL import Image
 
 
 User = get_user_model()
@@ -78,6 +79,13 @@ class AvatarSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"File size must not exceed {max_size_mb} MB.")
         if not value.content_type.startswith("image/"):
             raise serializers.ValidationError("File must be an image.")
+        try:
+            img = Image.open(value)
+            img.verify()
+        except Exception:
+            raise serializers.ValidationError("The uploaded file is corrupted or is not a valid image.")
+        if hasattr(value, 'seek'):
+            value.seek(0)
         return value
 
     def update(self, instance, validated_data):

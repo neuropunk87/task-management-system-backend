@@ -1,5 +1,5 @@
 from django.http import HttpResponseNotFound
-from django.urls import resolve
+from django.urls import resolve, Resolver404
 
 
 class GetRemoteAddrMiddleware:
@@ -19,9 +19,28 @@ class RoleBasedAccessMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path.startswith('/secretadmin/') and resolve(request.path).url_name != 'login':
+        # ---------------------Hardcoding--------------------
+        # if request.path.startswith('/secretadmin/') and resolve(request.path).url_name != 'login':
+        #     if not request.user.is_authenticated:
+        #         return HttpResponseNotFound("Page not found")
+        #     elif not request.user.is_superuser and request.user.role not in ['superadmin', 'admin']:
+        #         return HttpResponseNotFound("Page not found")
+        # return self.get_response(request)
+        # ---------------------------------------------------
+        try:
+            resolver_match = resolve(request.path)
+        except Resolver404:
+            return self.get_response(request)
+        if resolver_match.app_name == 'admin':
+            if resolver_match.url_name in ['login', 'logout', 'jsi18n']:
+                return self.get_response(request)
             if not request.user.is_authenticated:
                 return HttpResponseNotFound("Page not found")
-            elif not request.user.is_superuser and request.user.role not in ['superadmin', 'admin']:
+            user_role = getattr(request.user, 'role', None)
+            is_allowed = (
+                    request.user.is_superuser or
+                    user_role in ['superadmin', 'admin']
+            )
+            if not is_allowed:
                 return HttpResponseNotFound("Page not found")
         return self.get_response(request)

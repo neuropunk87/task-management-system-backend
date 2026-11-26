@@ -49,6 +49,14 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+.audit-cache/
+# Private, local-only security audit report
+/SECURITY_AUDIT.md
+.pip-tools-cache/
+.test-media/
+.verify-venv/
+staticfiles/
+media/
 cover/
 
 # Translations

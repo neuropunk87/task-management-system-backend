@@ -1,118 +1,154 @@
-import django
-import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "task_management_system.settings")
-django.setup()
-
-import sys
 import asyncio
 import logging
-from aiogram import Bot, Dispatcher, Router, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from aiogram.filters.command import Command
-from aiogram.client.default import DefaultBotProperties
-from asgiref.sync import sync_to_async
-from users.models import CustomUser
-from notifications.models import Notification
+import os
+import threading
+import sys
+from pathlib import Path
 
+if __name__ == "__main__":
+    # The unchanged Procfile executes the file directly, not as a Python module.
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "task_management_system.settings")
+    import django
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(sys.stderr)]
+    django.setup()
+
+from aiogram import Bot, Dispatcher, F, Router, types  # noqa: E402
+from aiogram.enums import ChatType
+from aiogram.filters.command import Command, CommandObject  # noqa: E402
+from aiogram.types import KeyboardButton, ReplyKeyboardMarkup  # noqa: E402
+from asgiref.sync import sync_to_async  # noqa: E402
+from django.conf import settings  # noqa: E402
+
+from users.models import CustomUser  # noqa: E402
+from users.telegram import (  # noqa: E402
+    InvalidTelegramLink,
+    TelegramChatAlreadyLinked,
+    consume_telegram_link,
 )
+
+
 logger = logging.getLogger(__name__)
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-if not TELEGRAM_BOT_TOKEN:
-    raise ValueError("❌ TELEGRAM_BOT_TOKEN are not set.")
-
-bot = Bot(token=TELEGRAM_BOT_TOKEN, default=DefaultBotProperties(parse_mode="HTML"))
-dp = Dispatcher()
 router = Router()
+router.message.filter(F.chat.type == ChatType.PRIVATE)
+
+
+def is_private_sender(message):
+    return (
+        message.chat.type == ChatType.PRIVATE
+        and message.from_user is not None
+        and not message.from_user.is_bot
+        and message.from_user.id == message.chat.id
+    )
 
 
 def main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🔔 Enable Notifications"),
-             KeyboardButton(text="🔕 Disable Notifications")],
+            [
+                KeyboardButton(text="🔔 Enable Notifications"),
+                KeyboardButton(text="🔕 Disable Notifications"),
+            ],
             [KeyboardButton(text="🛠 Help")],
         ],
         resize_keyboard=True,
-        one_time_keyboard=True,
     )
 
 
 @router.message(Command("start"))
-async def start_handler(message: types.Message):
-    user_chat_id = message.chat.id
-    logger.info(f"📩 /start from {user_chat_id}")
-
-    user_exists = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).exists)()
-    if user_exists:
-        user = await sync_to_async(CustomUser.objects.get)(telegram_id=user_chat_id)
-        user.telegram_notifications_enabled = True
-        await sync_to_async(user.save)()
+async def start_handler(message: types.Message, command: CommandObject):
+    if not is_private_sender(message):
+        return
+    chat_id = message.chat.id
+    if command.args:
+        try:
+            await sync_to_async(consume_telegram_link)(command.args, chat_id)
+        except InvalidTelegramLink:
+            await message.answer(
+                "This link is invalid or expired. Generate a new link in your profile."
+            )
+            return
+        except TelegramChatAlreadyLinked:
+            await message.answer(
+                "This Telegram chat is already linked to another account."
+            )
+            return
+        logger.info("A Telegram account was linked successfully.")
         await message.answer(
-            "✅ Welcome! Notifications are now enabled. You will receive task updates and deadline reminders.",
+            "Your account is linked and notifications are enabled.",
+            reply_markup=main_keyboard(),
+        )
+        return
+
+    user = await sync_to_async(
+        CustomUser.objects.filter(
+            telegram_id=str(chat_id), is_active=True, telegram_verified_at__isnull=False
+        ).first
+    )()
+    if user:
+        await sync_to_async(
+            CustomUser.objects.filter(pk=user.pk).update
+        )(telegram_notifications_enabled=True)
+        await message.answer(
+            "Notifications are enabled.",
             reply_markup=main_keyboard(),
         )
     else:
         await message.answer(
-            "🚀 Welcome! To receive notifications, link your Telegram ID in your profile.",
+            "Generate a one-time Telegram link in your profile, then open it here.",
             reply_markup=main_keyboard(),
         )
+
+
+async def _set_notifications(message: types.Message, enabled: bool):
+    if not is_private_sender(message):
+        return
+    updated = await sync_to_async(
+        CustomUser.objects.filter(
+            telegram_id=str(message.chat.id), is_active=True, telegram_verified_at__isnull=False
+        ).update
+    )(telegram_notifications_enabled=enabled)
+    if not updated:
+        await message.answer(
+            "Your Telegram chat is not linked. Generate a link in your profile."
+        )
+        return
+    state = "enabled" if enabled else "disabled"
+    await message.answer(f"Notifications are {state}.", reply_markup=main_keyboard())
 
 
 @router.message(Command("enable_notifications"))
 async def enable_notifications(message: types.Message):
-    user_chat_id = message.chat.id
-    logger.info(f"📩 Enable notifications for {user_chat_id}")
+    await _set_notifications(message, True)
 
-    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
-    if user:
-        user.telegram_notifications_enabled = True
-        await sync_to_async(user.save)()
-        await message.answer("✅ Notifications have been enabled. You will now receive updates.")
-    else:
-        await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
 
 @router.message(lambda message: message.text == "🔔 Enable Notifications")
 async def enable_notifications_button(message: types.Message):
-    await enable_notifications(message)
+    await _set_notifications(message, True)
 
 
 @router.message(Command("disable_notifications"))
 async def disable_notifications(message: types.Message):
-    user_chat_id = message.chat.id
-    logger.info(f"📩 Disable notifications for {user_chat_id}")
+    await _set_notifications(message, False)
 
-    user = await sync_to_async(CustomUser.objects.filter(telegram_id=user_chat_id).first)()
-    if user:
-        user.telegram_notifications_enabled = False
-        await sync_to_async(user.save)()
-        await message.answer("🔕 Notifications have been disabled. You will no longer receive updates.")
-    else:
-        await message.answer("❌ Your Telegram ID is not linked to any user. Please link it in your profile.")
 
 @router.message(lambda message: message.text == "🔕 Disable Notifications")
 async def disable_notifications_button(message: types.Message):
-    await disable_notifications(message)
+    await _set_notifications(message, False)
 
 
 @router.message(Command("help"))
 async def help_handler(message: types.Message):
     await message.answer(
-        "📌 Available commands:\n"
-        "/start - Start bot and enable notifications\n"
-        "/enable_notifications - Enable notifications\n"
-        "/disable_notifications - Disable notifications\n"
-        "/help - Show help information\n"
-        "🔹 Use the buttons below for easy navigation.",
-        reply_markup=main_keyboard()
+        "Available commands:\n"
+        "/start - link your account or enable notifications\n"
+        "/enable_notifications - enable notifications\n"
+        "/disable_notifications - disable notifications\n"
+        "/help - show this help",
+        reply_markup=main_keyboard(),
     )
+
 
 @router.message(lambda message: message.text == "🛠 Help")
 async def help_button_handler(message: types.Message):
@@ -122,15 +158,41 @@ async def help_button_handler(message: types.Message):
 @router.message()
 async def fallback_handler(message: types.Message):
     await message.answer(
-        "❌ Unknown command. Use /help or the buttons below.",
-        reply_markup=main_keyboard()
+        "Unknown command. Use /help or the buttons below.",
+        reply_markup=main_keyboard(),
     )
 
 
-async def main():
+async def main(shutdown: threading.Event | None = None, ready=None):
+    if not settings.TELEGRAM_BOT_TOKEN:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN is not configured.")
+    bot = Bot(token=settings.TELEGRAM_BOT_TOKEN)
+    dp = Dispatcher()
     dp.include_router(router)
-    logger.info("🚀 Bot is running in long polling mode")
-    await dp.start_polling(bot)
+    if ready:
+        async def on_startup(**kwargs):
+            ready()
+        dp.startup.register(on_startup)
+    logger.info("Telegram bot is running in long-polling mode.")
+    polling = asyncio.create_task(dp.start_polling(
+        bot,
+        allowed_updates=dp.resolve_used_update_types(),
+        handle_signals=shutdown is None,
+        close_bot_session=False,
+    ))
+    try:
+        if shutdown is None:
+            await polling
+        else:
+            while not shutdown.is_set():
+                if polling.done():
+                    await polling
+                    return
+                await asyncio.sleep(0.25)
+    finally:
+        polling.cancel()
+        await asyncio.gather(polling, return_exceptions=True)
+        await bot.session.close()
 
 
 if __name__ == "__main__":

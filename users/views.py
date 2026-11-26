@@ -1,62 +1,108 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework import status
-from rest_framework.generics import RetrieveUpdateAPIView, ListAPIView, RetrieveAPIView
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.filters import SearchFilter, OrderingFilter
-from django_filters.rest_framework import DjangoFilterBackend
+from urllib.parse import quote
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from users.serializers import (CustomTokenObtainPairSerializer, UserSerializer, UserRegistrationSerializer,
-                               ChangePasswordSerializer, UserDetailSerializer, AvatarSerializer)
+from django.db import IntegrityError, transaction
+from django.utils.decorators import method_decorator
+from django.views.decorators.cache import never_cache
+from rest_framework import status
+from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.exceptions import ValidationError
+from rest_framework.generics import ListAPIView, RetrieveAPIView, RetrieveUpdateAPIView
+from rest_framework.parsers import FormParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from drf_spectacular.utils import extend_schema
+
+from notifications.delivery import queue_welcome_email
+from users.serializers import (
+    AvatarSerializer,
+    ChangePasswordSerializer,
+    CustomTokenObtainPairSerializer,
+    CustomTokenRefreshSerializer,
+    LogoutSerializer,
+    TelegramLinkResponseSerializer,
+    UserDetailSerializer,
+    UserRegistrationSerializer,
+    UserSerializer,
+)
+from users.telegram import issue_telegram_link, unlink_telegram
 
 
 User = get_user_model()
 
 
+@method_decorator(never_cache, name="dispatch")
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
+
+
+@method_decorator(never_cache, name="dispatch")
+class CustomTokenRefreshView(TokenRefreshView):
+    serializer_class = CustomTokenRefreshSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "refresh"
 
 
 class UserRegistrationView(APIView):
     permission_classes = [AllowAny]
     serializer_class = UserRegistrationSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "registration"
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        try:
+            with transaction.atomic():
+                user = serializer.save()
+                queue_welcome_email(user)
+        except IntegrityError as exc:
+            # Concurrent registrations must not turn a unique constraint into a 500.
+            raise ValidationError("Username or email is already registered.") from exc
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = ChangePasswordSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "credential_change"
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data, context={'request': request})
-        if serializer.is_valid():
+        with transaction.atomic():
+            request.user = User.objects.select_for_update().get(pk=request.user.pk)
+            serializer = self.serializer_class(
+                data=request.data, context={"request": request},
+            )
+            serializer.is_valid(raise_exception=True)
             serializer.update(request.user, serializer.validated_data)
-            return Response({'message': 'Password updated successfully'}, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # A password change is a security boundary: revoke every refresh token.
+            for token in OutstandingToken.objects.filter(user=request.user):
+                BlacklistedToken.objects.get_or_create(token=token)
+        return Response({"message": "Password updated successfully."})
 
 
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = None
+    serializer_class = LogoutSerializer
 
     def post(self, request):
-        try:
-            refresh_token = request.data.get("refresh")
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-            return Response({"message": "Logout successful"}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.serializer_class(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({"message": "Logout successful."})
 
 
 class UserProfileView(RetrieveUpdateAPIView):
@@ -67,41 +113,73 @@ class UserProfileView(RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user
 
-    # def get_serializer_class(self):
-    #     class CustomUserDetailSerializer(UserDetailSerializer):
-    #         class Meta(UserDetailSerializer.Meta):
-    #             read_only_fields = ['username', 'email', 'role']
-    #     return CustomUserDetailSerializer
-
 
 class UpdateAvatarView(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = AvatarSerializer
     parser_classes = [MultiPartParser, FormParser]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "avatar_upload"
 
     def put(self, request, *args, **kwargs):
-        serializer = self.serializer_class(instance=request.user, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(
-                {"message": "Avatar updated successfully", "data": serializer.data},
-                status=status.HTTP_200_OK
-            )
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.serializer_class(
+            instance=request.user,
+            data=request.data,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"message": "Avatar updated successfully.", "data": serializer.data}
+        )
+
+
+@method_decorator(never_cache, name="dispatch")
+class TelegramLinkView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "telegram_link"
+
+    @extend_schema(request=None, responses=TelegramLinkResponseSerializer)
+    def post(self, request):
+        if not settings.TELEGRAM_BOT_TOKEN:
+            return Response({"detail": "Telegram integration is not configured."}, status=503)
+        token, expires_at = issue_telegram_link(request.user)
+        bot_username = settings.TELEGRAM_BOT_USERNAME
+        link = (
+            f"https://t.me/{quote(bot_username)}?start={quote(token)}"
+            if bot_username
+            else None
+        )
+        return Response(
+            {
+                "link": link,
+                "start_parameter": token,
+                "expires_at": expires_at,
+            }
+        )
+
+    @extend_schema(request=None, responses={204: None})
+    def delete(self, request):
+        unlink_telegram(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class UserListView(ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
-    queryset = User.objects.all().order_by('id')
-    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
-    search_fields = ['username', 'email', 'telegram_id', 'role']
-    ordering_fields = ['username', 'email', 'telegram_id', 'telegram_notifications_enabled', 'date_of_birth']
-    # ordering_fields = '__all__'
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["username", "first_name", "last_name", "role"]
+    ordering_fields = ["username", "first_name", "last_name", "role"]
+    ordering = ["id"]
+
+    def get_queryset(self):
+        return User.objects.filter(is_active=True)
 
 
 class UserDetailView(RetrieveAPIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = UserDetailSerializer
-    queryset = User.objects.all()
-    lookup_field = 'id'
+    serializer_class = UserSerializer
+    lookup_field = "pk"
+
+    def get_queryset(self):
+        return User.objects.filter(is_active=True)

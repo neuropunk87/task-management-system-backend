@@ -1,109 +1,86 @@
-from django.conf import settings
-from django.core.mail import send_mail
-from django.db.models.signals import post_save, pre_save, m2m_changed
+from django.db.models.signals import m2m_changed, post_save, pre_save
 from django.dispatch import receiver
-from users.models import CustomUser
-from tasks.models import Task, TaskHistory
+
 from notifications.models import Notification
-from notifications.utils import send_email_notification, send_telegram_notification
+from notifications.delivery import queue_delivery
+from tasks.models import Task, TaskHistory
 
 
-@receiver(post_save, sender=CustomUser)
-def send_telegram_bot_link(sender, instance, created, **kwargs):
-    if created:
-        subject = "Welcome to our project!"
-        message = f"""\nHello, {instance.username.capitalize()}!\n
-Thank you for registering in our project. To receive Telegram notifications, please follow the instructions:
-1. Fill in your Telegram ID in your profile on the site.
-2. Click on the following link and start chatting with our bot:\n
-👉 https://t.me/task_reminder_helper_bot\n
-After that, your Telegram will be linked to your account.\n
-If you have any questions, please email us!\n
-Regards,\nProject Team."""
-        from_email = settings.DEFAULT_FROM_EMAIL
-        recipient_list = [instance.email]
-        send_mail(subject, message, from_email, recipient_list)
+TRACKED_TASK_FIELDS = ("status", "priority", "deadline")
+
+
+def _record_assignment(task, user, added):
+    action = "assigned to" if added else "removed from"
+    subject = f"Task assignment changed: {task.title}"
+    message = f"You were {action} the task '{task.title}'."
+    notification = Notification.objects.create(user=user, task=task, message=message)
+    TaskHistory.objects.create(
+        task=task,
+        modified_by=task.modified_by,
+        field_changed="assigned_to",
+        old_value="" if added else user.username,
+        new_value=user.username if added else "",
+    )
+    queue_delivery(user, subject, message, notification=notification)
 
 
 @receiver(m2m_changed, sender=Task.assigned_to.through)
-def task_created_notification(sender, instance, action, reverse, model, pk_set, **kwargs):
-    if action == "post_add":
-        new_users = model.objects.filter(pk__in=pk_set)
-        for user in new_users:
-            subject = f"New Task assigned: {instance.title}"
-            message = f"""\nHello, {user.username.capitalize()}!\n
-You have been assigned a new task:\n
-Title: {instance.title}
-Description: {instance.description}
-Project: {instance.project}
-Status: {instance.status}
-Priority: {instance.priority}
-Deadline: {instance.deadline}\n
-Please check your dashboard for more details.\n
-Regards,\nProject Team."""
-            Notification.objects.create(user=user, task=instance, message=message)
-            TaskHistory.objects.create(
-                task=instance,
-                modified_by=instance.modified_by,
-                field_changed="assigned_to",
-                old_value="",
-                new_value=user.username,
-            )
-            if user.email:
-                send_email_notification.delay(user.email, subject, message)
-            if user.telegram_notifications_enabled and user.telegram_id:
-                send_telegram_notification.delay(user.telegram_id, message)
+def task_assignment_notification(sender, instance, action, model, pk_set, reverse, **kwargs):
+    if action == "pre_clear":
+        instance._removed_assignee_ids = list(
+            (instance.tasks if reverse else instance.assigned_to).values_list("pk", flat=True)
+        )
+        return
+    if action not in {"post_add", "post_remove", "post_clear"}:
+        return
 
-    elif action == "post_remove":
-        removed_users = model.objects.filter(pk__in=pk_set)
-        for user in removed_users:
-            subject = f"Task unassigned: {instance.title}"
-            message = f"""\nHello, {user.username.capitalize()}!\n
-You have been removed from the task:\n
-Title: {instance.title}\n
-If this was a mistake, please contact the project manager.\n
-Regards,\nProject Team."""
-            Notification.objects.create(user=user, task=instance, message=message)
-            TaskHistory.objects.create(
-                task=instance,
-                modified_by=instance.modified_by,
-                field_changed="assigned_to",
-                old_value=user.username,
-                new_value="",
-            )
-            if user.email:
-                send_email_notification.delay(user.email, subject, message)
-            if user.telegram_notifications_enabled and user.telegram_id:
-                send_telegram_notification.delay(user.telegram_id, message)
+    related_ids = pk_set or getattr(instance, "_removed_assignee_ids", [])
+    added = action == "post_add"
+    for related in model.objects.filter(pk__in=related_ids):
+        task, user = (related, instance) if reverse else (instance, related)
+        _record_assignment(task, user, added)
+    if hasattr(instance, "_removed_assignee_ids"):
+        del instance._removed_assignee_ids
 
 
 @receiver(pre_save, sender=Task)
-def task_updated_notification(sender, instance, **kwargs):
-    if not instance.pk:
+def capture_task_changes(sender, instance, **kwargs):
+    if kwargs.get("raw") or not instance.pk:
+        instance._notification_changes = {}
+        return
+    old = Task.objects.filter(pk=instance.pk).first()
+    if not old:
+        instance._notification_changes = {}
+        return
+    instance._notification_changes = {
+        field: (getattr(old, field), getattr(instance, field))
+        for field in TRACKED_TASK_FIELDS
+        if kwargs.get("update_fields") is None or field in kwargs["update_fields"]
+        if getattr(old, field) != getattr(instance, field)
+    }
+
+
+@receiver(post_save, sender=Task)
+def task_updated_notification(sender, instance, created, **kwargs):
+    changes = getattr(instance, "_notification_changes", {})
+    if kwargs.get("raw") or created or not changes:
         return
 
-    old_instance = Task.objects.get(pk=instance.pk)
-    changed_fields = {}
+    for field, (old_value, new_value) in changes.items():
+        TaskHistory.objects.create(
+            task=instance,
+            modified_by=instance.modified_by,
+            field_changed=field,
+            old_value=str(old_value),
+            new_value=str(new_value),
+        )
 
-    for field in ['status', 'priority', 'deadline']:
-        old_value, new_value = getattr(old_instance, field), getattr(instance, field)
-        if old_value != new_value:
-            changed_fields[field] = (old_value, new_value)
-            TaskHistory.objects.create(
-                task=instance,
-                modified_by=instance.modified_by,
-                field_changed=field,
-                old_value=old_value,
-                new_value=new_value,
-            )
-    if changed_fields and instance.assigned_to.exists():
-        for user in instance.assigned_to.all():
-            subject = f"Task '{instance.title}' updated"
-            messages = [f"\nTask '{instance.title}' {field} changed from '{old}' to '{new}'."
-                        for field, (old, new) in changed_fields.items()]
-            message = f"\nHello, {user.username.capitalize()}!\n" + "\n".join(messages)
-            Notification.objects.create(user=user, task=instance, message=message)
-            if user.email:
-                send_email_notification.delay(user.email, subject, message)
-            if user.telegram_notifications_enabled and user.telegram_id:
-                send_telegram_notification.delay(user.telegram_id, message)
+    summary = "; ".join(
+        f"{field}: '{old}' -> '{new}'"
+        for field, (old, new) in changes.items()
+    )
+    subject = f"Task updated: {instance.title}"
+    message = f"Task '{instance.title}' was updated. {summary}."
+    for user in instance.assigned_to.filter(is_active=True):
+        notification = Notification.objects.create(user=user, task=instance, message=message)
+        queue_delivery(user, subject, message, notification=notification)

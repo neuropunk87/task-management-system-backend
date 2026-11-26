@@ -1,23 +1,22 @@
 from django.contrib import admin
-from django.db import models
-from users.permissions import RoleRestrictedModelAdmin
+from users.permissions import RoleRestrictedAdminMixin
 from tasks.models import Task, TaskHistory, Comment
 
 
 @admin.register(Task)
-class TaskAdmin(RoleRestrictedModelAdmin):
+class TaskAdmin(RoleRestrictedAdminMixin, admin.ModelAdmin):
 # class TaskAdmin(admin.ModelAdmin):
     list_display = ('title', 'project', 'created_by', 'get_assigned_to', 'status', 'priority', 'deadline', 'created_at')
     list_filter = ('status', 'priority', 'project', 'assigned_to', 'deadline', 'created_at')
     filter_horizontal = ('assigned_to',)  # Працює тільки в формі редагування
     search_fields = ('title', 'project__name', 'assigned_to__username')
     ordering = ('-created_at',)
-    readonly_fields = ('created_at', 'modified_at')
+    readonly_fields = ('created_at', 'modified_at', 'completed_at')
 
     fieldsets = (
         ('Task Details', {'fields': ('title', 'description', 'project', 'assigned_to', 'created_by', 'modified_by')}),
         ('Status and Priority', {'fields': ('status', 'priority', 'deadline')}),
-        ('Timestamps', {'fields': ('created_at', 'modified_at')}),
+        ('Timestamps', {'fields': ('created_at', 'modified_at', 'completed_at')}),
     )
 
     actions = ['mark_as_completed']
@@ -28,12 +27,14 @@ class TaskAdmin(RoleRestrictedModelAdmin):
 
     @admin.action(description="Mark selected tasks as completed")
     def mark_as_completed(self, request, queryset):
-        queryset.update(status=Task.Status.COMPLETED, modified_at=models.functions.Now(), modified_by=request.user)
-        # queryset.update(status='Completed')
+        for task in queryset:
+            task.status = Task.Status.COMPLETED
+            task.modified_by = request.user
+            task.save()
 
 
 @admin.register(TaskHistory)
-class TaskHistoryAdmin(admin.ModelAdmin):
+class TaskHistoryAdmin(RoleRestrictedAdminMixin, admin.ModelAdmin):
     readonly_fields = [field.name for field in TaskHistory._meta.fields]
 
     list_display = ('task', 'modified_by', 'modified_at', 'field_changed', 'old_value', 'new_value')
@@ -51,7 +52,7 @@ class TaskHistoryAdmin(admin.ModelAdmin):
 
 
 @admin.register(Comment)
-class CommentAdmin(RoleRestrictedModelAdmin):
+class CommentAdmin(RoleRestrictedAdminMixin, admin.ModelAdmin):
 # class CommentAdmin(admin.ModelAdmin):
     list_display = ('task', 'author', 'created_at', 'modified_at')
     search_fields = ('task__title', 'author__username', 'content')

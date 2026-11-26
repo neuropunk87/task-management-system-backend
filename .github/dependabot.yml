@@ -1,34 +1,12 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"
+  - package-ecosystem: pip
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Kyiv"
-
+      interval: weekly
     open-pull-requests-limit: 5
-
-    groups:
-      security-updates:
-        patterns:
-          - "*"
-        update-types:
-          - "patch"
-          - "minor"
-
-    ignore:
-      - dependency-name: "django"
-        update-types: ["version-update:semver-major"]
-
-    labels:
-      - "dependencies"
-      - "python"
-
-  # - package-ecosystem: "github-actions"
-  #   directory: "/"
-  #   schedule:
-  #     interval: "monthly"
-  #   labels:
-  #     - "ci-cd"
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

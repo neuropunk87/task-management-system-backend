@@ -1,41 +1,37 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
 from django.shortcuts import get_object_or_404
-from projects.models import Project
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from analytics.models import ProjectAnalytics
 from analytics.serializers import ProjectAnalyticsSerializer
+from projects.models import Project
+from users.access import IsSystemAdmin
 
 
 class AnalyticsView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsSystemAdmin]
     serializer_class = ProjectAnalyticsSerializer
 
     def get(self, request, project_id):
-        try:
-            project = get_object_or_404(Project, id=project_id)
-            analytics, _ = ProjectAnalytics.objects.get_or_create(project=project)
-            analytics.update_analytics()
-            serializer = ProjectAnalyticsSerializer(analytics)
-            return Response(serializer.data)
-        except Project.DoesNotExist:
-            return Response({"error": "Project not found."}, status=404)
+        project = get_object_or_404(Project, id=project_id)
+        analytics, _ = ProjectAnalytics.objects.get_or_create(project=project)
+        analytics.update_analytics()
+        return Response(ProjectAnalyticsSerializer(analytics).data)
 
 
 class ProjectAnalyticsChartView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsSystemAdmin]
 
     def get(self, request):
-        projects = ProjectAnalytics.objects.all()
-
+        projects = ProjectAnalytics.objects.select_related("project")
         if not projects.exists():
             return Response({"message": "No data available for analytics."}, status=404)
-
-        data = {
-            "labels": [analytics.project.name for analytics in projects],
-            "total_tasks": [analytics.total_tasks for analytics in projects],
-            "completed_tasks": [analytics.completed_tasks for analytics in projects],
-            "in_progress_tasks": [analytics.in_progress_tasks for analytics in projects],
-            "pending_tasks": [analytics.pending_tasks for analytics in projects],
-        }
-        return Response(data)
+        return Response(
+            {
+                "labels": [item.project.name for item in projects],
+                "total_tasks": [item.total_tasks for item in projects],
+                "completed_tasks": [item.completed_tasks for item in projects],
+                "in_progress_tasks": [item.in_progress_tasks for item in projects],
+                "pending_tasks": [item.pending_tasks for item in projects],
+            }
+        )

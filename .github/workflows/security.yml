@@ -85,6 +85,7 @@ jobs:
           -x "*/migrations/*,*/tests.py,*/tests_*.py"
 
       - name: Dependency vulnerability audit
-        run: pip-audit -r requirements.txt --no-deps
+        run: pip-audit -r requirements.txt --require-hashes --strict
       - name: Development tools vulnerability audit
-        run: pip-audit -r requirements-dev.txt --no-deps
+        # Audit every locked tool, including wheel, which pip-audit preinstalls.
+        run: pip-audit -r requirements-dev.txt --require-hashes --disable-pip --strict

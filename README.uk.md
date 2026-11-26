@@ -238,8 +238,8 @@ Heroku має тимчасову файлову систему: локальни
 .\.venv\Scripts\python.exe -m pip check
 
 .\.venv\Scripts\bandit.exe -r analytics notifications projects task_management_system tasks users -x "*/migrations/*,*/tests.py,*/tests_*.py"
-.\.venv\Scripts\pip-audit.exe -r requirements.txt --no-deps
-.\.venv\Scripts\pip-audit.exe -r requirements-dev.txt --no-deps
+.\.venv\Scripts\pip-audit.exe -r requirements.txt --require-hashes --strict
+.\.venv\Scripts\pip-audit.exe -r requirements-dev.txt --require-hashes --disable-pip --strict
 ```
 
 Для перевірки конкурентних транзакцій задайте `AUDIT_TEST_DATABASE_URL`

@@ -1,6 +1,6 @@
 # Supported runtime: Python 3.14.x
 Django==5.2.18
-djangorestframework==3.18.0
+djangorestframework==3.18.2
 djangorestframework-simplejwt==5.5.1
 PyJWT==2.15.1
 django-filter==26.1
@@ -18,12 +18,14 @@ gevent==26.8.0
 
 aiogram==3.30.0
 httpx==0.28.1
-# Explicit security pin for aiogram/aiohttp's transitive dependency.
+# Patched transitive dependencies of the HTTP clients.
+aiohttp==3.14.4
+certifi==2026.10.18
 multidict==6.9.1
 
 django-axes==8.3.1
 django-cors-headers==4.9.0
 whitenoise==6.12.0
 django-dirtyfields==1.9.9
-Pillow==12.3.0
+Pillow==13.0.0
 gunicorn==26.0.0

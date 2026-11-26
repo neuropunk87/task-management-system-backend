@@ -240,8 +240,8 @@ send real SMTP or Telegram messages:
 .\.venv\Scripts\python.exe -m pip check
 
 .\.venv\Scripts\bandit.exe -r analytics notifications projects task_management_system tasks users -x "*/migrations/*,*/tests.py,*/tests_*.py"
-.\.venv\Scripts\pip-audit.exe -r requirements.txt --no-deps
-.\.venv\Scripts\pip-audit.exe -r requirements-dev.txt --no-deps
+.\.venv\Scripts\pip-audit.exe -r requirements.txt --require-hashes --strict
+.\.venv\Scripts\pip-audit.exe -r requirements-dev.txt --require-hashes --disable-pip --strict
 ```
 
 For concurrent transaction checks, set `AUDIT_TEST_DATABASE_URL` and

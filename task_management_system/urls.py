@@ -21,11 +21,17 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
+from django.views.decorators.http import require_GET
+from rest_framework.permissions import AllowAny
+from users.access import IsSystemAdmin
 
 
+@require_GET
 def home_view(request):
     return JsonResponse({"message": "API is running"}, status=200)
 
+
+docs_permission = AllowAny if settings.API_DOCS_PUBLIC else IsSystemAdmin
 
 urlpatterns = [
     path('', home_view),
@@ -38,10 +44,14 @@ urlpatterns = [
     path('api/analytics/', include('analytics.urls')),
 
     # API Schema
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    path('api/docs/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('api/schema/', SpectacularAPIView.as_view(permission_classes=[docs_permission]), name='schema'),
 ]
+
+if settings.ENABLE_API_DOCS:
+    urlpatterns += [
+        path('api/docs/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema', permission_classes=[docs_permission]), name='swagger-ui'),
+        path('api/docs/redoc/', SpectacularRedocView.as_view(url_name='schema', permission_classes=[docs_permission]), name='redoc'),
+    ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

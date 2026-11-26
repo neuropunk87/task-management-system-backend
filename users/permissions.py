@@ -1,14 +1,11 @@
-from django.contrib.admin import ModelAdmin
-from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 
+from users.access import is_system_admin
 
-User = get_user_model()
 
-
-class RoleRestrictedModelAdmin(ModelAdmin):
+class RoleRestrictedAdminMixin:
     def has_permission(self, request):
-        return request.user.is_authenticated and request.user.role in ['superadmin', 'admin']
+        return is_system_admin(request.user)
 
     def has_view_permission(self, request, obj=None):
         return self.has_permission(request)

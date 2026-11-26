@@ -1,31 +1,46 @@
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework import status
-from projects.models import Project
-from projects.serializers import ProjectSerializer, ProjectCreateUpdateSerializer
-from projects.permissions import IsOwnerOrParticipant
+from django.db import IntegrityError, transaction
 from django.db.models import Q
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import ValidationError
+from rest_framework.viewsets import ModelViewSet
+
+from projects.models import Project
+from projects.permissions import IsProjectMemberOrOwner
+from projects.serializers import ProjectCreateUpdateSerializer, ProjectSerializer
+from users.access import is_system_admin
 
 
 class ProjectViewSet(ModelViewSet):
-    queryset = Project.objects.all()
-    permission_classes = [IsAuthenticated, IsOwnerOrParticipant]
+    queryset = Project.objects.none()
+    permission_classes = [IsAuthenticated, IsProjectMemberOrOwner]
 
     def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action in {"create", "update", "partial_update"}:
             return ProjectCreateUpdateSerializer
         return ProjectSerializer
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return self.queryset
+        queryset = Project.objects.select_related("owner").prefetch_related(
+            "participants"
+        )
         user = self.request.user
-        return Project.objects.filter(Q(owner=user) | Q(participants=user)).distinct()
+        if is_system_admin(user):
+            return queryset
+        return queryset.filter(Q(owner=user) | Q(participants=user)).distinct()
 
+    @transaction.atomic
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        try:
+            project = serializer.save(owner=self.request.user)
+            project.participants.add(self.request.user)
+        except IntegrityError as exc:
+            raise ValidationError({"name": "Project conflicts with an existing record."}) from exc
 
-    def destroy(self, request, *args, **kwargs):
-        project = self.get_object()
-        if not project.is_owner(request.user):
-            return Response({"error": "Only the owner can delete the project."}, status=status.HTTP_403_FORBIDDEN)
-        return super().destroy(request, *args, **kwargs)
+    @transaction.atomic
+    def perform_update(self, serializer):
+        try:
+            serializer.save()
+        except IntegrityError as exc:
+            raise ValidationError({"name": "Project conflicts with an existing record."}) from exc

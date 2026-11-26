@@ -1,10 +1,10 @@
 from django.contrib import admin
 from projects.models import Project
-from users.permissions import RoleRestrictedModelAdmin
+from users.permissions import RoleRestrictedAdminMixin
 
 
 @admin.register(Project)
-class ProjectAdmin(RoleRestrictedModelAdmin):
+class ProjectAdmin(RoleRestrictedAdminMixin, admin.ModelAdmin):
 # class ProjectAdmin(admin.ModelAdmin):
     list_display = ('name', 'owner', 'get_participants', 'status', 'created_at', 'updated_at')
     list_filter = ('status', 'owner', 'created_at', 'updated_at')

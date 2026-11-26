@@ -1,0 +1,10 @@
+[run]
+branch = True
+source = analytics, notifications, projects, task_management_system, tasks, users
+omit =
+    */migrations/*
+    */tests.py
+    */tests_*.py
+
+[report]
+show_missing = True

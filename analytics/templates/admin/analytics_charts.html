@@ -1,130 +1,74 @@
 {% extends "admin/base_site.html" %}
 
 {% block content %}
-<h1>Project Analytics Charts</h1>
+<h1>Project analytics</h1>
 
-<label for="chartType">Select the chart type:</label>
-<select id="chartType">
-    <option value="bar">Bar chart</option>
-    <option value="line">Line chart</option>
-    <option value="pie">Pie chart</option>
+<label for="metric">Metric:</label>
+<select id="metric">
+    <option value="total_tasks">Total tasks</option>
+    <option value="completed_tasks">Completed tasks</option>
+    <option value="in_progress_tasks">In-progress tasks</option>
+    <option value="pending_tasks">Pending tasks</option>
 </select>
 
-<div style="width: 100%; max-width: 1200px; margin: auto; height: 450px;">
-    <canvas id="analyticsChart"></canvas>
+<div style="width: 100%; max-width: 1200px; margin: 1rem auto; overflow-x: auto;">
+    <canvas id="analyticsChart" width="1200" height="520" aria-label="Project task totals"></canvas>
 </div>
 
-<script id="analytics-data" type="application/json">{{ data|safe }}</script>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ data|json_script:"analytics-data" }}
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        try {
-            const rawData = document.getElementById("analytics-data").textContent;
-            const data = JSON.parse(rawData);
+    document.addEventListener("DOMContentLoaded", () => {
+        const data = JSON.parse(document.getElementById("analytics-data").textContent);
+        const canvas = document.getElementById("analyticsChart");
+        const context = canvas.getContext("2d");
+        const selector = document.getElementById("metric");
+        const colors = ["#2563eb", "#16a34a", "#ca8a04", "#dc2626"];
 
-            if (!data.labels || data.labels.length === 0) {
-                console.error("Empty dataset.");
+        function render(metric) {
+            const values = data[metric] || [];
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.font = "14px sans-serif";
+            context.fillStyle = "#111827";
+
+            if (!data.labels.length) {
+                context.fillText("No analytics data available.", 30, 40);
                 return;
             }
 
-            const ctx = document.getElementById("analyticsChart").getContext("2d");
-            let analyticsChart = null;
+            const padding = 70;
+            const max = Math.max(1, ...values);
+            const availableWidth = canvas.width - padding * 2;
+            const slot = availableWidth / data.labels.length;
+            const barWidth = Math.max(12, Math.min(70, slot * 0.65));
+            const chartHeight = canvas.height - padding * 2;
 
-            function generateColors(length) {
-                const colors = ["#FF5733", "#33FF57", "#3357FF", "#F1C40F", "#8E44AD", "#1ABC9C", "#E74C3C", "#2ECC71", "#3498DB", "#9B59B6"];
-                return Array.from({ length }, (_, i) => colors[i % colors.length]);
-            }
+            context.strokeStyle = "#6b7280";
+            context.beginPath();
+            context.moveTo(padding, padding / 2);
+            context.lineTo(padding, canvas.height - padding);
+            context.lineTo(canvas.width - padding / 2, canvas.height - padding);
+            context.stroke();
 
-            function createChart(type) {
-                if (analyticsChart) {
-                    analyticsChart.destroy();
-                }
-
-                if (type === "pie") {
-                    analyticsChart = new Chart(ctx, {
-                        type: "pie",
-                        data: {
-                            labels: data.labels,
-                            datasets: [{
-                                label: "Total Tasks",
-                                backgroundColor: generateColors(data.total_tasks.length),
-                                borderWidth: 1,
-                                data: data.total_tasks,
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    position: 'top',
-                                    labels: {
-                                        usePointStyle: true,
-                                        boxWidth: 15
-                                    }
-                                }
-                            }
-                        }
-                    });
-                } else {
-                    analyticsChart = new Chart(ctx, {
-                        type: type,
-                        data: {
-                            labels: data.labels,
-                            datasets: [
-                                {
-                                    label: "Total Tasks",
-                                    backgroundColor: "blue",
-                                    borderColor: "blue",
-                                    data: data.total_tasks,
-                                    fill: false
-                                },
-                                {
-                                    label: "Completed Tasks",
-                                    backgroundColor: "green",
-                                    borderColor: "green",
-                                    data: data.completed_tasks,
-                                    fill: false
-                                },
-                                {
-                                    label: "In Progress Tasks",
-                                    backgroundColor: "yellow",
-                                    borderColor: "yellow",
-                                    data: data.in_progress_tasks,
-                                    fill: false
-                                },
-                                {
-                                    label: "Pending Tasks",
-                                    backgroundColor: "red",
-                                    borderColor: "red",
-                                    data: data.pending_tasks,
-                                    fill: false
-                                }
-                            ]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true
-                                }
-                            }
-                        }
-                    });
-                }
-            }
-
-            createChart("bar");
-
-            document.getElementById("chartType").addEventListener("change", function(event) {
-                createChart(event.target.value);
+            data.labels.forEach((label, index) => {
+                const value = Number(values[index] || 0);
+                const height = (value / max) * chartHeight;
+                const x = padding + slot * index + (slot - barWidth) / 2;
+                const y = canvas.height - padding - height;
+                context.fillStyle = colors[index % colors.length];
+                context.fillRect(x, y, barWidth, height);
+                context.fillStyle = "#111827";
+                context.fillText(String(value), x, Math.max(20, y - 8));
+                const shortLabel = String(label).slice(0, 18);
+                context.save();
+                context.translate(x + barWidth / 2, canvas.height - padding + 12);
+                context.rotate(-Math.PI / 5);
+                context.fillText(shortLabel, 0, 0);
+                context.restore();
             });
-
-        } catch (error) {
-            console.error("Error rendering chart:", error);
         }
+
+        selector.addEventListener("change", event => render(event.target.value));
+        render(selector.value);
     });
 </script>
 {% endblock %}

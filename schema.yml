@@ -6,7 +6,7 @@ info:
 paths:
   /api/analytics/{project_id}/:
     get:
-      operationId: api_analytics_retrieve
+      operationId: analytics_retrieve
       parameters:
       - in: path
         name: project_id
@@ -14,7 +14,7 @@ paths:
           type: integer
         required: true
       tags:
-      - api
+      - analytics
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -27,7 +27,7 @@ paths:
           description: ''
   /api/notifications/:
     get:
-      operationId: api_notifications_list
+      operationId: notifications_list
       parameters:
       - name: page
         required: false
@@ -36,7 +36,7 @@ paths:
         schema:
           type: integer
       tags:
-      - api
+      - notifications
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -47,28 +47,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedNotificationList'
           description: ''
-    post:
-      operationId: api_notifications_create
-      tags:
-      - api
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Notification'
-      security:
-      - jwtAuth: []
-      - cookieAuth: []
-      responses:
-        '201':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Notification'
-          description: ''
   /api/notifications/{notification_id}/read/:
     post:
-      operationId: api_notifications_read_create
+      operationId: notifications_read_create
       parameters:
       - in: path
         name: notification_id
@@ -76,7 +57,7 @@ paths:
           type: integer
         required: true
       tags:
-      - api
+      - notifications
       requestBody:
         content:
           application/json:
@@ -94,7 +75,7 @@ paths:
           description: ''
   /api/projects/:
     get:
-      operationId: api_projects_list
+      operationId: projects_list
       parameters:
       - name: page
         required: false
@@ -103,7 +84,7 @@ paths:
         schema:
           type: integer
       tags:
-      - api
+      - projects
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -115,9 +96,9 @@ paths:
                 $ref: '#/components/schemas/PaginatedProjectList'
           description: ''
     post:
-      operationId: api_projects_create
+      operationId: projects_create
       tags:
-      - api
+      - projects
       requestBody:
         content:
           application/json:
@@ -136,7 +117,7 @@ paths:
           description: ''
   /api/projects/{id}/:
     get:
-      operationId: api_projects_retrieve
+      operationId: projects_retrieve
       parameters:
       - in: path
         name: id
@@ -145,7 +126,7 @@ paths:
         description: A unique integer value identifying this project.
         required: true
       tags:
-      - api
+      - projects
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -157,7 +138,7 @@ paths:
                 $ref: '#/components/schemas/Project'
           description: ''
     put:
-      operationId: api_projects_update
+      operationId: projects_update
       parameters:
       - in: path
         name: id
@@ -166,7 +147,7 @@ paths:
         description: A unique integer value identifying this project.
         required: true
       tags:
-      - api
+      - projects
       requestBody:
         content:
           application/json:
@@ -184,7 +165,7 @@ paths:
                 $ref: '#/components/schemas/ProjectCreateUpdate'
           description: ''
     patch:
-      operationId: api_projects_partial_update
+      operationId: projects_partial_update
       parameters:
       - in: path
         name: id
@@ -193,7 +174,7 @@ paths:
         description: A unique integer value identifying this project.
         required: true
       tags:
-      - api
+      - projects
       requestBody:
         content:
           application/json:
@@ -210,7 +191,7 @@ paths:
                 $ref: '#/components/schemas/ProjectCreateUpdate'
           description: ''
     delete:
-      operationId: api_projects_destroy
+      operationId: projects_destroy
       parameters:
       - in: path
         name: id
@@ -219,7 +200,7 @@ paths:
         description: A unique integer value identifying this project.
         required: true
       tags:
-      - api
+      - projects
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -228,7 +209,7 @@ paths:
           description: No response body
   /api/tasks/comments/:
     get:
-      operationId: api_tasks_comments_list
+      operationId: tasks_comments_list
       parameters:
       - name: page
         required: false
@@ -237,7 +218,7 @@ paths:
         schema:
           type: integer
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -249,9 +230,9 @@ paths:
                 $ref: '#/components/schemas/PaginatedCommentList'
           description: ''
     post:
-      operationId: api_tasks_comments_create
+      operationId: tasks_comments_create
       tags:
-      - api
+      - tasks
       requestBody:
         content:
           application/json:
@@ -270,7 +251,7 @@ paths:
           description: ''
   /api/tasks/comments/{id}/:
     get:
-      operationId: api_tasks_comments_retrieve
+      operationId: tasks_comments_retrieve
       parameters:
       - in: path
         name: id
@@ -279,7 +260,7 @@ paths:
         description: A unique integer value identifying this comment.
         required: true
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -291,7 +272,7 @@ paths:
                 $ref: '#/components/schemas/Comment'
           description: ''
     put:
-      operationId: api_tasks_comments_update
+      operationId: tasks_comments_update
       parameters:
       - in: path
         name: id
@@ -300,7 +281,7 @@ paths:
         description: A unique integer value identifying this comment.
         required: true
       tags:
-      - api
+      - tasks
       requestBody:
         content:
           application/json:
@@ -318,7 +299,7 @@ paths:
                 $ref: '#/components/schemas/Comment'
           description: ''
     patch:
-      operationId: api_tasks_comments_partial_update
+      operationId: tasks_comments_partial_update
       parameters:
       - in: path
         name: id
@@ -327,7 +308,7 @@ paths:
         description: A unique integer value identifying this comment.
         required: true
       tags:
-      - api
+      - tasks
       requestBody:
         content:
           application/json:
@@ -344,7 +325,7 @@ paths:
                 $ref: '#/components/schemas/Comment'
           description: ''
     delete:
-      operationId: api_tasks_comments_destroy
+      operationId: tasks_comments_destroy
       parameters:
       - in: path
         name: id
@@ -353,7 +334,7 @@ paths:
         description: A unique integer value identifying this comment.
         required: true
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -362,7 +343,7 @@ paths:
           description: No response body
   /api/tasks/comments/{id}/reply/:
     post:
-      operationId: api_tasks_comments_reply_create
+      operationId: tasks_comments_reply_create
       parameters:
       - in: path
         name: id
@@ -371,7 +352,7 @@ paths:
         description: A unique integer value identifying this comment.
         required: true
       tags:
-      - api
+      - tasks
       requestBody:
         content:
           application/json:
@@ -390,9 +371,9 @@ paths:
           description: ''
   /api/tasks/comments/my-comments/:
     get:
-      operationId: api_tasks_comments_my_comments_retrieve
+      operationId: tasks_comments_my_comments_retrieve
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -405,16 +386,70 @@ paths:
           description: ''
   /api/tasks/tasks/:
     get:
-      operationId: api_tasks_tasks_list
+      operationId: tasks_tasks_list
       parameters:
+      - in: query
+        name: assigned_to
+        schema:
+          type: string
+      - in: query
+        name: deadline_after
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: deadline_before
+        schema:
+          type: string
+          format: date
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
       - name: page
         required: false
         in: query
         description: A page number within the paginated result set.
         schema:
           type: integer
+      - in: query
+        name: priority
+        schema:
+          type: string
+          enum:
+          - High
+          - Low
+          - Medium
+        description: |-
+          * `Low` - Low
+          * `Medium` - Medium
+          * `High` - High
+      - in: query
+        name: project
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - Completed
+          - In Progress
+          - Pending
+        description: |-
+          * `Pending` - Pending
+          * `In Progress` - In Progress
+          * `Completed` - Completed
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -426,9 +461,9 @@ paths:
                 $ref: '#/components/schemas/PaginatedTaskList'
           description: ''
     post:
-      operationId: api_tasks_tasks_create
+      operationId: tasks_tasks_create
       tags:
-      - api
+      - tasks
       requestBody:
         content:
           application/json:
@@ -447,7 +482,7 @@ paths:
           description: ''
   /api/tasks/tasks/{id}/:
     get:
-      operationId: api_tasks_tasks_retrieve
+      operationId: tasks_tasks_retrieve
       parameters:
       - in: path
         name: id
@@ -456,7 +491,7 @@ paths:
         description: A unique integer value identifying this Task.
         required: true
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -468,7 +503,7 @@ paths:
                 $ref: '#/components/schemas/Task'
           description: ''
     put:
-      operationId: api_tasks_tasks_update
+      operationId: tasks_tasks_update
       parameters:
       - in: path
         name: id
@@ -477,7 +512,7 @@ paths:
         description: A unique integer value identifying this Task.
         required: true
       tags:
-      - api
+      - tasks
       requestBody:
         content:
           application/json:
@@ -495,7 +530,7 @@ paths:
                 $ref: '#/components/schemas/Task'
           description: ''
     patch:
-      operationId: api_tasks_tasks_partial_update
+      operationId: tasks_tasks_partial_update
       parameters:
       - in: path
         name: id
@@ -504,7 +539,7 @@ paths:
         description: A unique integer value identifying this Task.
         required: true
       tags:
-      - api
+      - tasks
       requestBody:
         content:
           application/json:
@@ -521,7 +556,7 @@ paths:
                 $ref: '#/components/schemas/Task'
           description: ''
     delete:
-      operationId: api_tasks_tasks_destroy
+      operationId: tasks_tasks_destroy
       parameters:
       - in: path
         name: id
@@ -530,7 +565,7 @@ paths:
         description: A unique integer value identifying this Task.
         required: true
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -539,7 +574,7 @@ paths:
           description: No response body
   /api/tasks/tasks/{id}/comments/:
     get:
-      operationId: api_tasks_tasks_comments_retrieve
+      operationId: tasks_tasks_comments_retrieve
       parameters:
       - in: path
         name: id
@@ -548,7 +583,7 @@ paths:
         description: A unique integer value identifying this Task.
         required: true
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -561,9 +596,9 @@ paths:
           description: ''
   /api/tasks/tasks/my-tasks/:
     get:
-      operationId: api_tasks_tasks_my_tasks_retrieve
+      operationId: tasks_tasks_my_tasks_retrieve
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -576,9 +611,9 @@ paths:
           description: ''
   /api/tasks/tasks/project-tasks/:
     get:
-      operationId: api_tasks_tasks_project_tasks_retrieve
+      operationId: tasks_tasks_project_tasks_retrieve
       tags:
-      - api
+      - tasks
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -591,7 +626,7 @@ paths:
           description: ''
   /api/users/list/:
     get:
-      operationId: api_users_list_list
+      operationId: users_list_list
       parameters:
       - name: ordering
         required: false
@@ -612,7 +647,7 @@ paths:
         schema:
           type: string
       tags:
-      - api
+      - users
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -625,12 +660,12 @@ paths:
           description: ''
   /api/users/login/:
     post:
-      operationId: api_users_login_create
+      operationId: users_login_create
       description: |-
         Takes a set of user credentials and returns an access and refresh JSON web
         token pair to prove the authentication of those credentials.
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -646,20 +681,30 @@ paths:
           description: ''
   /api/users/logout:
     post:
-      operationId: api_users_logout_create
+      operationId: users_logout_create
       tags:
-      - api
+      - users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Logout'
+        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Logout'
+          description: ''
   /api/users/profile/:
     get:
-      operationId: api_users_profile_retrieve
+      operationId: users_profile_retrieve
       tags:
-      - api
+      - users
       security:
       - jwtAuth: []
       responses:
@@ -670,9 +715,9 @@ paths:
                 $ref: '#/components/schemas/UserDetail'
           description: ''
     put:
-      operationId: api_users_profile_update
+      operationId: users_profile_update
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -688,9 +733,9 @@ paths:
                 $ref: '#/components/schemas/UserDetail'
           description: ''
     patch:
-      operationId: api_users_profile_partial_update
+      operationId: users_profile_partial_update
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -707,12 +752,15 @@ paths:
           description: ''
   /api/users/profile/avatar/:
     put:
-      operationId: api_users_profile_avatar_update
+      operationId: users_profile_avatar_update
       tags:
-      - api
+      - users
       requestBody:
         content:
-          application/json:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Avatar'
+          application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/Avatar'
         required: true
@@ -728,9 +776,9 @@ paths:
           description: ''
   /api/users/profile/change-password/:
     post:
-      operationId: api_users_profile_change_password_create
+      operationId: users_profile_change_password_create
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -747,11 +795,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChangePassword'
           description: ''
+  /api/users/profile/telegram-link/:
+    post:
+      operationId: users_profile_telegram_link_create
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramLinkResponse'
+          description: ''
+    delete:
+      operationId: users_profile_telegram_link_destroy
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/users/register/:
     post:
-      operationId: api_users_register_create
+      operationId: users_register_create
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
@@ -771,28 +844,28 @@ paths:
           description: ''
   /api/users/token/refresh/:
     post:
-      operationId: api_users_token_refresh_create
+      operationId: users_token_refresh_create
       description: |-
         Takes a refresh type JSON web token and returns an access type JSON web
         token if the refresh token is valid.
       tags:
-      - api
+      - users
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TokenRefresh'
+              $ref: '#/components/schemas/CustomTokenRefresh'
         required: true
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenRefresh'
+                $ref: '#/components/schemas/CustomTokenRefresh'
           description: ''
   /api/users/user/{id}/:
     get:
-      operationId: api_users_user_retrieve
+      operationId: users_user_retrieve
       parameters:
       - in: path
         name: id
@@ -800,7 +873,7 @@ paths:
           type: integer
         required: true
       tags:
-      - api
+      - users
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -809,7 +882,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserDetail'
+                $ref: '#/components/schemas/User'
           description: ''
 components:
   schemas:
@@ -831,9 +904,11 @@ components:
         old_password:
           type: string
           writeOnly: true
+          maxLength: 128
         new_password:
           type: string
           writeOnly: true
+          maxLength: 128
       required:
       - new_password
       - old_password
@@ -853,6 +928,10 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        parent:
+          type: integer
+          readOnly: true
+          nullable: true
         content:
           type: string
         created_at:
@@ -869,20 +948,43 @@ components:
       - created_at
       - id
       - modified_at
+      - parent
       - task
-      - task_id
     CustomTokenObtainPair:
       type: object
       properties:
         username:
           type: string
           writeOnly: true
+          maxLength: 150
         password:
           type: string
           writeOnly: true
+          maxLength: 128
       required:
       - password
       - username
+    CustomTokenRefresh:
+      type: object
+      properties:
+        refresh:
+          type: string
+          maxLength: 4096
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    Logout:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          maxLength: 4096
+      required:
+      - refresh
     Notification:
       type: object
       properties:
@@ -1028,27 +1130,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/User'
-    Participant:
-      type: object
-      properties:
-        id:
-          type: integer
-          readOnly: true
-        username:
-          type: string
-          description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
-            only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          title: Email address
-          maxLength: 254
-      required:
-      - email
-      - id
-      - username
     PatchedComment:
       type: object
       properties:
@@ -1065,6 +1146,10 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        parent:
+          type: integer
+          readOnly: true
+          nullable: true
         content:
           type: string
         created_at:
@@ -1078,17 +1163,20 @@ components:
     PatchedProjectCreateUpdate:
       type: object
       properties:
+        id:
+          type: integer
+          readOnly: true
         name:
           type: string
           description: Project name
           maxLength: 255
         description:
           type: string
-          description: Detailed description of the project
+          maxLength: 20000
         owner:
-          type: integer
-          nullable: true
-          description: The user who owns the project
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
         participants:
           type: array
           items:
@@ -1107,6 +1195,21 @@ components:
         id:
           type: integer
           readOnly: true
+        project:
+          type: integer
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 20000
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        status:
+          $ref: '#/components/schemas/TaskStatusEnum'
+        deadline:
+          type: string
+          format: date-time
         assigned_to:
           type: array
           items:
@@ -1118,28 +1221,6 @@ components:
             type: integer
             writeOnly: true
           writeOnly: true
-        title:
-          type: string
-          maxLength: 255
-        description:
-          type: string
-        priority:
-          $ref: '#/components/schemas/PriorityEnum'
-        status:
-          $ref: '#/components/schemas/TaskStatusEnum'
-        deadline:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        modified_at:
-          type: string
-          format: date-time
-          readOnly: true
-        project:
-          type: integer
         created_by:
           type: integer
           readOnly: true
@@ -1148,8 +1229,22 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
     PatchedUserDetail:
       type: object
+      description: Private representation used only for the authenticated user's profile.
       properties:
         id:
           type: integer
@@ -1185,9 +1280,14 @@ components:
           maxLength: 30
         telegram_id:
           type: string
+          readOnly: true
           nullable: true
           description: Telegram ID for notifications
-          maxLength: 50
+        telegram_verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         telegram_notifications_enabled:
           type: boolean
           description: Enable Telegram notifications
@@ -1205,6 +1305,7 @@ components:
           type: string
           format: uri
           nullable: true
+          readOnly: true
           description: Profile picture (optional)
     PriorityEnum:
       enum:
@@ -1224,23 +1325,25 @@ components:
           readOnly: true
         name:
           type: string
+          readOnly: true
           description: Project name
-          maxLength: 255
         description:
           type: string
+          readOnly: true
           description: Detailed description of the project
         owner:
           allOf:
-          - $ref: '#/components/schemas/Participant'
+          - $ref: '#/components/schemas/User'
           readOnly: true
         participants:
           type: array
           items:
-            $ref: '#/components/schemas/Participant'
+            $ref: '#/components/schemas/User'
           readOnly: true
         status:
           allOf:
           - $ref: '#/components/schemas/ProjectStatusEnum'
+          readOnly: true
           description: |-
             Project status
 
@@ -1258,10 +1361,12 @@ components:
           description: The date and time when the project was last updated
       required:
       - created_at
+      - description
       - id
       - name
       - owner
       - participants
+      - status
       - updated_at
     ProjectAnalytics:
       type: object
@@ -1295,17 +1400,20 @@ components:
     ProjectCreateUpdate:
       type: object
       properties:
+        id:
+          type: integer
+          readOnly: true
         name:
           type: string
           description: Project name
           maxLength: 255
         description:
           type: string
-          description: Detailed description of the project
+          maxLength: 20000
         owner:
-          type: integer
-          nullable: true
-          description: The user who owns the project
+          allOf:
+          - $ref: '#/components/schemas/User'
+          readOnly: true
         participants:
           type: array
           items:
@@ -1319,8 +1427,9 @@ components:
             * `active` - Active
             * `archived` - Archived
       required:
+      - id
       - name
-      - participants
+      - owner
     ProjectStatusEnum:
       enum:
       - active
@@ -1347,6 +1456,21 @@ components:
         id:
           type: integer
           readOnly: true
+        project:
+          type: integer
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          maxLength: 20000
+        priority:
+          $ref: '#/components/schemas/PriorityEnum'
+        status:
+          $ref: '#/components/schemas/TaskStatusEnum'
+        deadline:
+          type: string
+          format: date-time
         assigned_to:
           type: array
           items:
@@ -1358,28 +1482,6 @@ components:
             type: integer
             writeOnly: true
           writeOnly: true
-        title:
-          type: string
-          maxLength: 255
-        description:
-          type: string
-        priority:
-          $ref: '#/components/schemas/PriorityEnum'
-        status:
-          $ref: '#/components/schemas/TaskStatusEnum'
-        deadline:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        modified_at:
-          type: string
-          format: date-time
-          readOnly: true
-        project:
-          type: integer
         created_by:
           type: integer
           readOnly: true
@@ -1388,9 +1490,22 @@ components:
           type: integer
           readOnly: true
           nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        modified_at:
+          type: string
+          format: date-time
+          readOnly: true
+        completed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
       required:
       - assigned_to
-      - assigned_to_ids
+      - completed_at
       - created_at
       - created_by
       - deadline
@@ -1409,37 +1524,38 @@ components:
         * `Pending` - Pending
         * `In Progress` - In Progress
         * `Completed` - Completed
-    TokenRefresh:
+    TelegramLinkResponse:
       type: object
       properties:
-        access:
+        link:
           type: string
-          readOnly: true
-        refresh:
+          format: uri
+          nullable: true
+        start_parameter:
           type: string
+        expires_at:
+          type: string
+          format: date-time
       required:
-      - access
-      - refresh
+      - expires_at
+      - link
+      - start_parameter
     User:
       type: object
+      description: Public user directory representation without private contact data.
       properties:
         id:
           type: integer
           readOnly: true
         username:
           type: string
+          readOnly: true
           description: Required. 150 characters or fewer. Letters, digits and @/./+/-/_
             only.
-          pattern: ^[\w.@+-]+$
-          maxLength: 150
-        email:
-          type: string
-          format: email
-          title: Email address
-          maxLength: 254
         role:
           allOf:
           - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
           description: |-
             User role in the system
 
@@ -1449,41 +1565,28 @@ components:
             * `employee` - Employee
         first_name:
           type: string
+          readOnly: true
           nullable: true
-          maxLength: 30
         last_name:
           type: string
+          readOnly: true
           nullable: true
-          maxLength: 30
-        telegram_id:
-          type: string
-          nullable: true
-          description: Telegram ID for notifications
-          maxLength: 50
-        telegram_notifications_enabled:
-          type: boolean
-          description: Enable Telegram notifications
-        phone_number:
-          type: string
-          nullable: true
-          description: User phone number (optional)
-          maxLength: 15
-        date_of_birth:
-          type: string
-          format: date
-          nullable: true
-          description: User date of birth (optional)
         avatar:
           type: string
           format: uri
           nullable: true
+          readOnly: true
           description: Profile picture (optional)
       required:
-      - email
+      - avatar
+      - first_name
       - id
+      - last_name
+      - role
       - username
     UserDetail:
       type: object
+      description: Private representation used only for the authenticated user's profile.
       properties:
         id:
           type: integer
@@ -1519,9 +1622,14 @@ components:
           maxLength: 30
         telegram_id:
           type: string
+          readOnly: true
           nullable: true
           description: Telegram ID for notifications
-          maxLength: 50
+        telegram_verified_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
         telegram_notifications_enabled:
           type: boolean
           description: Enable Telegram notifications
@@ -1539,11 +1647,15 @@ components:
           type: string
           format: uri
           nullable: true
+          readOnly: true
           description: Profile picture (optional)
       required:
+      - avatar
       - email
       - id
       - role
+      - telegram_id
+      - telegram_verified_at
       - username
     UserRegistration:
       type: object
@@ -1557,14 +1669,15 @@ components:
         email:
           type: string
           format: email
-          title: Email address
           maxLength: 254
         password:
           type: string
           writeOnly: true
+          maxLength: 128
         password2:
           type: string
           writeOnly: true
+          maxLength: 128
       required:
       - email
       - password

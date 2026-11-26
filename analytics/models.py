@@ -1,13 +1,16 @@
 from django.db import models
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-from datetime import timedelta
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q
+
 from projects.models import Project
 from tasks.models import Task
 
 
 class ProjectAnalytics(models.Model):
-    project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name='analytics')
+    project = models.OneToOneField(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="analytics",
+    )
     total_tasks = models.PositiveIntegerField(default=0)
     completed_tasks = models.PositiveIntegerField(default=0)
     in_progress_tasks = models.PositiveIntegerField(default=0)
@@ -22,28 +25,34 @@ class ProjectAnalytics(models.Model):
         return f"Analytics for {self.project.name}"
 
     def update_analytics(self):
-        tasks = self.project.tasks.all()
-        self.total_tasks = tasks.count()
-        self.completed_tasks = tasks.filter(status="Completed").count()
-        self.in_progress_tasks = tasks.filter(status="In Progress").count()
-        self.pending_tasks = tasks.filter(status="Pending").count()
-        completed_tasks = tasks.filter(status="Completed", modified_at__isnull=False, created_at__isnull=False)
-
-        if completed_tasks.exists():
-            total_time_seconds = sum(
-                (task.modified_at - task.created_at).total_seconds()
-                for task in completed_tasks
-                if task.modified_by and task.created_at
-            )
-            avg_time_seconds = total_time_seconds / completed_tasks.count()
-            self.average_completion_time = timedelta(hours=round(avg_time_seconds / 3600, 2))
-        else:
-            self.average_completion_time = None
-
-        self.save(update_fields=["total_tasks", "completed_tasks", "in_progress_tasks", "pending_tasks", "average_completion_time"])
-
-
-@receiver(post_save, sender=Task)
-def update_project_analytics_on_task_save(sender, instance, **kwargs):
-    if instance.project and hasattr(instance.project, 'analytics'):
-        instance.project.analytics.update_analytics()
+        completion_duration = ExpressionWrapper(
+            F("completed_at") - F("created_at"),
+            output_field=DurationField(),
+        )
+        summary = self.project.tasks.aggregate(
+            total=Count("id"),
+            completed=Count("id", filter=Q(status=Task.Status.COMPLETED)),
+            in_progress=Count("id", filter=Q(status=Task.Status.IN_PROGRESS)),
+            pending=Count("id", filter=Q(status=Task.Status.PENDING)),
+            average=Avg(
+                completion_duration,
+                filter=Q(
+                    status=Task.Status.COMPLETED,
+                    completed_at__isnull=False,
+                ),
+            ),
+        )
+        self.total_tasks = summary["total"]
+        self.completed_tasks = summary["completed"]
+        self.in_progress_tasks = summary["in_progress"]
+        self.pending_tasks = summary["pending"]
+        self.average_completion_time = summary["average"]
+        self.save(
+            update_fields=[
+                "total_tasks",
+                "completed_tasks",
+                "in_progress_tasks",
+                "pending_tasks",
+                "average_completion_time",
+            ]
+        )

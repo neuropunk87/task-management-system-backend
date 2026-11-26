@@ -31,6 +31,7 @@ class CustomUser(AbstractUser):
         default=False,
         help_text=_('Enable Telegram notifications'),
     )
+    telegram_verified_at = models.DateTimeField(null=True, blank=True)
     phone_number = models.CharField(
         max_length=15,
         blank=True,
@@ -63,4 +64,34 @@ class CustomUser(AbstractUser):
     def save(self, *args, **kwargs):
         if self.is_superuser:
             self.role = self.Role.SUPERADMIN
+        self.is_staff = self.is_superuser or self.role in {
+            self.Role.SUPERADMIN,
+            self.Role.ADMIN,
+        }
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and ({"role", "is_superuser"} & set(update_fields)):
+            update_fields = set(update_fields)
+            update_fields.add("is_staff")
+            if self.is_superuser:
+                update_fields.add("role")
+            kwargs["update_fields"] = update_fields
         super().save(*args, **kwargs)
+
+
+class TelegramLinkToken(models.Model):
+    """Short-lived, hashed code used to prove ownership of a Telegram chat."""
+
+    user = models.OneToOneField(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="telegram_link_token",
+    )
+    token_digest = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Telegram link token for {self.user.username}"

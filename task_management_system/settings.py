@@ -252,6 +252,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+WHITENOISE_ROOT = BASE_DIR / "public"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 STORAGES = {
@@ -331,6 +332,7 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Task Management API",
     "DESCRIPTION": "API documentation for the Task Management system",
     "VERSION": "1.0.0",
+    "SWAGGER_UI_FAVICON_HREF": "/favicon.ico",
     "SERVE_INCLUDE_SCHEMA": False,
     "ENUM_NAME_OVERRIDES": {
         "ProjectStatusEnum": "projects.models.Project.Status",

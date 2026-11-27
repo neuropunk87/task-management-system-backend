@@ -1,5 +1,10 @@
 {% extends "admin/base.html" %}
 
+{% block extrahead %}
+{{ block.super }}
+<link rel="icon" href="/favicon.ico">
+{% endblock %}
+
 {% block branding %}
 <h1 id="site-name"><a href="{% url 'admin:index' %}">Task Management Administration</a></h1>
 {% endblock %}

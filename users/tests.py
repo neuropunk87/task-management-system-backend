@@ -100,6 +100,30 @@ class UserSecurityTests(TestCase):
         self.user.refresh_from_db()
         self.assertIsNone(self.user.telegram_id)
 
+    @override_settings(TELEGRAM_BOT_TOKEN="test-only-token")
+    def test_reading_telegram_status_preserves_the_code_and_write_quota(self):
+        url = reverse("telegram-link")
+        self.assertEqual(APIClient().get(url).status_code, 401)
+        for _ in range(5):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data, {"verified": False})
+        self.assertEqual(self.client.head(url).status_code, 200)
+        self.assertEqual(self.client.options(url).status_code, 200)
+        self.assertFalse(TelegramLinkToken.objects.filter(user=self.user).exists())
+
+        for _ in range(5):
+            issued = self.client.post(url)
+            self.assertEqual(issued.status_code, 200)
+        limited = self.client.post(url)
+        self.assertEqual(limited.status_code, 429)
+        self.assertIn("Retry-After", limited)
+
+        self.assertEqual(self.client.get(url).status_code, 200)
+        consume_telegram_link(issued.data["start_parameter"], "333")
+        self.user.refresh_from_db()
+        self.assertEqual(self.client.get(url).data, {"verified": True})
+
     def test_one_time_telegram_link_is_hashed_and_consumed(self):
         raw_token, _ = issue_telegram_link(self.user)
         link = TelegramLinkToken.objects.get(user=self.user)

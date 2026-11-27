@@ -153,7 +153,7 @@ Key routes:
 | `POST /api/users/token/refresh/` | Refresh tokens |
 | `POST /api/users/logout` | Revoke the current user's refresh token |
 | `/api/users/profile/` | Current user's profile |
-| `POST/DELETE /api/users/profile/telegram-link/` | Verify or unlink Telegram |
+| `GET/POST/DELETE /api/users/profile/telegram-link/` | Check Telegram verification, issue a one-time link, or unlink the chat |
 | `/api/projects/` | Projects and membership |
 | `/api/tasks/tasks/` | Tasks and additional lists |
 | `/api/tasks/comments/` | Comments and replies |

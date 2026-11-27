@@ -151,7 +151,7 @@ Gunicorn не підтримує запуск безпосередньо у Wind
 | `POST /api/users/token/refresh/` | Оновлення токенів |
 | `POST /api/users/logout` | Відкликання власного refresh-токена |
 | `/api/users/profile/` | Власний профіль |
-| `POST/DELETE /api/users/profile/telegram-link/` | Підтвердження або відв'язування Telegram |
+| `GET/POST/DELETE /api/users/profile/telegram-link/` | Перевірити стан прив'язки Telegram, отримати одноразове посилання або відв'язати чат |
 | `/api/projects/` | Проєкти та учасники |
 | `/api/tasks/tasks/` | Завдання та додаткові списки |
 | `/api/tasks/comments/` | Коментарі й відповіді |

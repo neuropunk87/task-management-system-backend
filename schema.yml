@@ -796,8 +796,30 @@ paths:
                 $ref: '#/components/schemas/ChangePassword'
           description: ''
   /api/users/profile/telegram-link/:
+    get:
+      operationId: users_profile_telegram_link_retrieve
+      description: |-
+        View the current account's Telegram verification status.
+
+        Choose POST once to generate a link. Open it in Telegram and press Start,
+        or send /start followed by the start_parameter to the bot in a private chat.
+        Each new code replaces the previous one.
+      tags:
+      - users
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelegramLinkStatus'
+          description: ''
     post:
       operationId: users_profile_telegram_link_create
+      description: Issue a one-time code for the signed-in user's private Telegram
+        chat.
       tags:
       - users
       security:
@@ -812,6 +834,7 @@ paths:
           description: ''
     delete:
       operationId: users_profile_telegram_link_destroy
+      description: Unlink the chat and invalidate any outstanding code.
       tags:
       - users
       security:
@@ -1540,6 +1563,13 @@ components:
       - expires_at
       - link
       - start_parameter
+    TelegramLinkStatus:
+      type: object
+      properties:
+        verified:
+          type: boolean
+      required:
+      - verified
     User:
       type: object
       description: Public user directory representation without private contact data.

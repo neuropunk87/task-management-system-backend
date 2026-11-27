@@ -70,6 +70,16 @@ class ProxyHeaderSecurityTests(SimpleTestCase):
 
 
 class DeploymentInvariantTests(SimpleTestCase):
+    @override_settings(DEBUG=False)
+    def test_admin_favicon_is_served_without_login(self):
+        login = self.client.get("/secretadmin/login/", secure=True)
+        self.assertContains(login, '<link rel="icon" href="/favicon.ico">', html=True)
+
+        icon = self.client.get("/favicon.ico", secure=True)
+        self.assertEqual(icon.status_code, 200)
+        self.assertEqual(icon.headers["Content-Type"], "image/x-icon")
+        self.assertTrue(b"".join(icon.streaming_content).startswith(b"\x00\x00\x01\x00"))
+
     def test_root_supports_head_for_uptime_monitors(self):
         # The test client strips HEAD bodies even when the application returns one.
         head = WSGIHandler().get_response(RequestFactory().head("/", secure=True))

@@ -2,15 +2,22 @@ import logging
 import os
 import runpy
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.core.handlers.wsgi import WSGIHandler
-from django.test import RequestFactory, SimpleTestCase, override_settings
+from django.core.management import call_command
+from django.templatetags.static import static
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
+from django.urls import reverse
 from rest_framework.throttling import AnonRateThrottle
 
 from task_management_system.middleware import GetRemoteAddrMiddleware
 from task_management_system.logging import RedactingFormatter
+from task_management_system.settings import STORAGES as PROJECT_STORAGES
 
 
 class ProxyHeaderSecurityTests(SimpleTestCase):
@@ -69,17 +76,33 @@ class ProxyHeaderSecurityTests(SimpleTestCase):
         self.assertTrue(request.is_secure())
 
 
+class AdminFaviconTests(TestCase):
+    @override_settings(DEBUG=False, STORAGES=PROJECT_STORAGES)
+    def test_login_and_dashboard_link_to_the_collected_favicon(self):
+        static_root = self.enterContext(TemporaryDirectory())
+        self.enterContext(self.settings(STATIC_ROOT=static_root))
+        call_command("collectstatic", interactive=False, verbosity=0)
+
+        icon_url = static("branding/favicon.ico")
+        self.assertRegex(icon_url, r"^/static/branding/favicon\.[0-9a-f]{12}\.ico$")
+        link = f'<link rel="icon" type="image/x-icon" href="{icon_url}">'
+        self.assertContains(self.client.get(reverse("admin:login"), secure=True), link, html=True)
+
+        expected = (settings.WHITENOISE_ROOT / "favicon.ico").read_bytes()
+        self.assertTrue(expected.startswith(b"\x00\x00\x01\x00"))
+        for url in (icon_url, "/favicon.ico"):
+            with self.subTest(url=url):
+                response = self.client.get(url, secure=True)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.headers["Content-Type"], "image/x-icon")
+                self.assertEqual(b"".join(response.streaming_content), expected)
+
+        admin = get_user_model().objects.create_superuser("favicon-admin", "favicon@example.com")
+        self.client.force_login(admin)
+        self.assertContains(self.client.get(reverse("admin:index"), secure=True), link, html=True)
+
+
 class DeploymentInvariantTests(SimpleTestCase):
-    @override_settings(DEBUG=False)
-    def test_admin_favicon_is_served_without_login(self):
-        login = self.client.get("/secretadmin/login/", secure=True)
-        self.assertContains(login, '<link rel="icon" href="/favicon.ico">', html=True)
-
-        icon = self.client.get("/favicon.ico", secure=True)
-        self.assertEqual(icon.status_code, 200)
-        self.assertEqual(icon.headers["Content-Type"], "image/x-icon")
-        self.assertTrue(b"".join(icon.streaming_content).startswith(b"\x00\x00\x01\x00"))
-
     def test_root_supports_head_for_uptime_monitors(self):
         # The test client strips HEAD bodies even when the application returns one.
         head = WSGIHandler().get_response(RequestFactory().head("/", secure=True))

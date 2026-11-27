@@ -21,14 +21,18 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_safe
 from rest_framework.permissions import AllowAny
 from users.access import IsSystemAdmin
 
 
-@require_GET
+@require_safe
 def home_view(request):
-    return JsonResponse({"message": "API is running"}, status=200)
+    response = JsonResponse({"message": "API is running"})
+    if request.method == "HEAD":
+        response.headers["Content-Length"] = str(len(response.content))
+        response.content = b""
+    return response
 
 
 docs_permission = AllowAny if settings.API_DOCS_PUBLIC else IsSystemAdmin

@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from django.core.exceptions import ImproperlyConfigured
+from django.core.handlers.wsgi import WSGIHandler
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from rest_framework.throttling import AnonRateThrottle
 
@@ -69,6 +70,23 @@ class ProxyHeaderSecurityTests(SimpleTestCase):
 
 
 class DeploymentInvariantTests(SimpleTestCase):
+    def test_root_supports_head_for_uptime_monitors(self):
+        # The test client strips HEAD bodies even when the application returns one.
+        head = WSGIHandler().get_response(RequestFactory().head("/", secure=True))
+        self.addCleanup(head.close)
+        self.assertEqual(head.status_code, 200)
+        self.assertEqual(head.content, b"")
+
+        get = self.client.get("/", secure=True)
+        self.assertEqual(get.status_code, 200)
+        self.assertEqual(get.json(), {"message": "API is running"})
+        self.assertEqual(head.headers["Content-Length"], get.headers["Content-Length"])
+        self.assertEqual(head.headers["Content-Type"], get.headers["Content-Type"])
+
+        post = self.client.post("/", secure=True)
+        self.assertEqual(post.status_code, 405)
+        self.assertEqual(post.headers["Allow"], "GET, HEAD")
+
     def test_procfile_is_preserved_exactly(self):
         expected = (
             "web: gunicorn task_management_system.wsgi --log-file -\n"

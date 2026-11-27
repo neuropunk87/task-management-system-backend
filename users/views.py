@@ -27,6 +27,7 @@ from users.serializers import (
     CustomTokenRefreshSerializer,
     LogoutSerializer,
     TelegramLinkResponseSerializer,
+    TelegramLinkStatusSerializer,
     UserDetailSerializer,
     UserRegistrationSerializer,
     UserSerializer,
@@ -135,12 +136,29 @@ class UpdateAvatarView(APIView):
 
 @method_decorator(never_cache, name="dispatch")
 class TelegramLinkView(APIView):
+    """View the current account's Telegram verification status.
+
+    Choose POST once to generate a link. Open it in Telegram and press Start,
+    or send /start followed by the start_parameter to the bot in a private chat.
+    Each new code replaces the previous one.
+    """
+
     permission_classes = [IsAuthenticated]
-    throttle_classes = [ScopedRateThrottle]
     throttle_scope = "telegram_link"
+
+    def get_throttles(self):
+        if self.request.method in {"POST", "DELETE"}:
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
+
+    @extend_schema(responses=TelegramLinkStatusSerializer)
+    def get(self, request):
+        verified = bool(request.user.telegram_id and request.user.telegram_verified_at)
+        return Response({"verified": verified})
 
     @extend_schema(request=None, responses=TelegramLinkResponseSerializer)
     def post(self, request):
+        """Issue a one-time code for the signed-in user's private Telegram chat."""
         if not settings.TELEGRAM_BOT_TOKEN:
             return Response({"detail": "Telegram integration is not configured."}, status=503)
         token, expires_at = issue_telegram_link(request.user)
@@ -160,6 +178,7 @@ class TelegramLinkView(APIView):
 
     @extend_schema(request=None, responses={204: None})
     def delete(self, request):
+        """Unlink the chat and invalidate any outstanding code."""
         unlink_telegram(request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

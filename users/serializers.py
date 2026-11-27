@@ -182,6 +182,10 @@ class LogoutSerializer(serializers.Serializer):
         self.validated_data["refresh"].blacklist()
 
 
+class TelegramLinkStatusSerializer(serializers.Serializer):
+    verified = serializers.BooleanField()
+
+
 class TelegramLinkResponseSerializer(serializers.Serializer):
     link = serializers.URLField(allow_null=True)
     start_parameter = serializers.CharField()
